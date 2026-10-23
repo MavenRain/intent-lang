@@ -22,8 +22,30 @@ USER rulings (the request, 2026-10-22):
 - R4 target: EVM bytecode for any EVM chain (Telcoin Network, Ethereum
   mainnet).
 
-Builder calls (NOT ruled; section 10 gives each one, section 11 gives the
-questions for the USER):
+USER rulings (S1, 2026-10-22), verbatim:
+
+> For rulings, I will say blocks for Q4, and check from the declaration's
+> shape for Q2, taking recommendations for the rest of the Qs.
+
+- Q1 (a): ambient Pi, Sigma, Path and U with Glue are not limited. The
+  declared type constructors are only CM (cell monads) and CC (cocell
+  comonads).
+- Q2 (a): the cell criterion is syntactic: the type parameter occurs only
+  in the generator. Cons lists are refused; the free monoid is used.
+- Q3 (a): `Enc` is the identity cell monad with a sealed eliminator.
+  `decrypt` is law-only. Exponential ElGamal on BN254, MPC opening, general
+  `bind` off the chain.
+- Q4 (b): decay progress is in BLOCKS, not seconds. This is NOT the plan
+  default. Sections 3.2, 3.3, 4.1, 7 and O17 give the consequences.
+- Q5 (a): the governed parameter is `window`, now a number of blocks.
+- Q6 (a): `ecrecover` for the intent signature, one contract for the DAO
+  and the reactor.
+- Q7: `startOut : Enc Amount` is added to `Intent`; the prose formula
+  (`decay i ≤ o`) is the reading.
+- Q8: the orbit-lang DAO slot `Outcome` is renamed `Decision`.
+
+Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
+questions that the USER ruled in S1):
 
 - O1: the name intent-lang.
 - O2: the kit is hosts/tcc-evm-contract (U256, Addr, Env, `pay`, `pull`,
@@ -95,7 +117,8 @@ Each name has one of three kinds, as in orbit-lang:
 | defined | The prelude defines it from slots, formers and kit base data. |
 | primitive | Opaque. The kit implements it. Only the listed operations use it. |
 
-Kit base data (tcc-evm-contract): `U256`, `Addr`, `Env` (`now`, `caller`),
+Kit base data (tcc-evm-contract): `U256`, `Addr`, `Env` (`now`, `caller`;
+`block` is added by O17),
 `Out` (`pay`, `pull`, `emit`), the contract `State`. No other base data.
 `Nat` stays internal to the kernel, as in orbit-lang.
 
@@ -130,12 +153,12 @@ From the pasted design:
 |---|---|---|
 | Token, Address | defined | `Addr` |
 | Amount | defined | `U256` |
-| Progress | defined | `U256`: seconds since the intent start (O6) |
+| Progress | defined | `U256`: the number of blocks since the intent start block (O6, Q4 (b)) |
 | Enc | primitive former | the ciphertext monad (3.4) |
 | decrypt | primitive, law-only | `Enc A -> A`. The ideal decryption. It occurs only in law positions; no program term computes it (O7). |
 | ZKProof W | defined | `‖ W ‖`, the propositional truncation (a CM). Zero knowledge is the `squash` cell: all proofs of `W` are equal. |
 | verified | primitive | `Transcript -> Option ‖ W ‖` |
-| Intent | defined record | `inTok`, `outTok`, `amtIn`, `startOut`, `minOut` (all three `Enc Amount`), `decoyIdx : Enc (Fin n)`, `owner : Addr`, `nonce`, `start` (`U256`), `zk` (O8, O9) |
+| Intent | defined record | `inTok`, `outTok`, `amtIn`, `startOut`, `minOut` (all three `Enc Amount`), `decoyIdx : Enc (Fin n)`, `owner : Addr`, `nonce`, `start` (`U256`, the start block number), `zk` (O8, O9) |
 | Bundle n | defined | `Fin n -> Intent`, with `Fin n` a chain of `Option` over `Unit` (a CM) |
 | Quote | defined record | `outAmt : Enc Amount`, `solver : Address` |
 | Transfer | defined record | `token`, `from`, `to`, `amount` |
@@ -148,7 +171,7 @@ From the pasted design:
 
 ### 3.3 The link: the DAO governs the swap
 
-`Params := (window : U256)`, the decay window in seconds (O10). `Decision
+`Params := (window : U256)`, the decay window in blocks (O10, Q4 (b)). `Decision
 := Params`. The entry `enact` writes the decided `Params` into the contract
 state. `settle` reads `window` from the state. The DAO members are the MPC
 committee: each member holds one share of the threshold key (3.4). So the
@@ -198,6 +221,11 @@ accept o at t   <=> window * o + t * startOut >= window * startOut + t * minOut
 
 Both sides are affine in the ciphertexts with the public scalars `window` and
 `t`. So the encrypted check is `bind`-free affine evaluation (4.3).
+
+Progress in blocks (Q4 (b)): `t = block - start`, capped at `window`.
+`block` is the block number of the call (`Env.block`, O17), `start` is the
+start block of the intent, and `window` is a number of blocks. The affine
+check above is unchanged.
 
 ### 4.2 Atomicity and reclaim
 
@@ -267,7 +295,7 @@ One contract (O15) with these entries:
 | `cast` | verifies the bLSAG signature and the one-hot proof, adds the encrypted ballot to the encrypted tally (`ecAdd`) |
 | `close` | verifies the MPC opening of the tally, computes the Decision by the constitution, stores it |
 | `enact` | writes the decided `Params`; `amend` as in orbit-lang |
-| `fill` | verifies the intent signature, the intent and quote proofs and the openings, checks 4.1 at `t = now - start` (capped at `window`), marks the nonce, runs the two `pull` effects, emits `Settled` |
+| `fill` | verifies the intent signature, the intent and quote proofs and the openings, checks 4.1 at `t = block - start` (capped at `window`; `t` comes from the block number `Env.block`, O17, not from `now`), marks the nonce, runs the two `pull` effects, emits `Settled` |
 | `cancel` | the owner marks the nonce used, emits `Cancelled` |
 
 Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
@@ -287,16 +315,16 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | Slice | Content | Status |
 |---|---|---|
 | S0 | Seed: the template with the tcc-evm-contract host, the design verbatim, this plan, the kit gate GREEN, the private remote | DONE |
-| S1 | USER rulings on the questions of section 11; record them in this plan | PLANNED |
+| S1 | USER rulings on the questions of section 11; record them in this plan | DONE |
 | S2 | Kernel port from orbit-lang 2162fb2 (section 6); the gate counts of orbit-lang | PLANNED |
 | S3 | R1 narrowing: `REFUSE_CELL`, kernel-derived unit and bind (counit and extend), the free monoid in place of the cons list, the former matrix rewritten as CM and CC rows | PLANNED |
 | S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | PLANNED |
 | S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | PLANNED |
 | S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | PLANNED |
 | S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | PLANNED |
-| S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals | PLANNED |
+| S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | PLANNED |
 | S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | PLANNED |
-| S10 | The contract of section 7: writer, guest/host/EVM differential, gas and size rows | PLANNED |
+| S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows | PLANNED |
 | S11 | Mutants and close | PLANNED |
 
 ## 10. Open items
@@ -305,56 +333,115 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 - O2: the kit and the kernel route (section 6). Builder call.
 - O3: the reading of R1 (section 2): the ambient LCC and cubical structure
   is not limited; the declared type constructors are the CM and CC classes
-  only. Question Q1.
+  only. RULED: Q1 (a).
 - O4: the cell criterion is syntactic (the parameter only in the generator).
   The other choice: any parameterized type with a program-given monad or
-  comonad instance and law paths checked by the kernel. Question Q2.
+  comonad instance and law paths checked by the kernel. RULED: Q2 (a), the
+  syntactic criterion ("check from the declaration's shape").
 - O5: the DAO slot `Outcome` of orbit-lang is renamed `Decision`, because
-  the swap design also names a type `Outcome`. Question Q8.
+  the swap design also names a type `Outcome`. RULED: Q8.
 - O6: decay is `Progress -> Amount` with fixed end values, not a path
-  (4.1). Progress is in seconds from `Env.now`. Question Q4.
+  (4.1). Progress is the number of blocks since the intent start block,
+  from `Env.block` (O17), not seconds from `Env.now`. RULED: Q4 (b), blocks
+  (not the plan default).
 - O7: `Enc` is the identity cell monad with a sealed eliminator; `decrypt`
   is law-only; `op*` derive from `bind`. The other choice: `Enc` as an
-  environment comonad over a key, with `decrypt` as the counit. Question Q3.
+  environment comonad over a key, with `decrypt` as the counit. RULED: Q3
+  (a).
 - O8: the design's `Intent` record has no `startOut`, but `decay` needs it.
-  We add `startOut : Enc Amount`; `minOut` is the end value. Question Q7.
+  We add `startOut : Enc Amount`; `minOut` is the end value. RULED: Q7.
 - O9: the design's formula `decrypt (intent .minOut) ≤ o` does not use `i`.
   We read the prose: `decay i ≤ o`. The formula is the case `i = window`.
-  Question Q7.
-- O10: the governed parameter is `window`, one field. Other choices: a fee,
-  a solver set. Question Q5.
+  RULED: Q7.
+- O10: the governed parameter is `window`, one field, a number of blocks
+  (Q4 (b)). Other choices: a fee, a solver set. RULED: Q5 (a).
 - O11: FHE on the chain is additive exponential ElGamal on BN254 (affine
   `bind` only); the MPC committee opens values; general FHE `bind` is off
-  the chain. IND-CPA under DDH is a VALIDATION assumption. Question Q3.
+  the chain. IND-CPA under DDH is a VALIDATION assumption. RULED: Q3 (a).
 - O12: atomicity and reclaim are `State` laws, not proof objects (4.2).
 - O13: the intent signature is `ecrecover` (one new kit primitive). The
-  other choice: a BN254 Schnorr key per owner. Question Q6.
+  other choice: a BN254 Schnorr key per owner. RULED: Q6 (a).
 - O14: only the settled fill is opened (4.3).
 - O15: one contract for the DAO and the reactor, if EIP-170 allows it;
   else two contracts with the reactor reading `Params` from the DAO by a
-  view call. Question Q6.
+  view call. RULED: Q6 (a), one contract. If the S10 size row breaks
+  EIP-170, the split goes back to the USER.
 - O16: exponential ElGamal decryption needs a discrete log. The host
   evaluator bounds the plaintexts (for example 2^40) for the tests; the
   chain checks `m G` for a claimed `m` and never solves a discrete log.
+- O17 (new in S1, from Q4 (b)): the kit `Env` has only `now` (TIMESTAMP)
+  and `caller` (CALLER). Blocks need the NUMBER opcode (0x43). We add a
+  field `block : U256` to `Env`, lowered to NUMBER, and a block column in
+  the `langc run` scripts. The kit gives `now` the type `Nat`; `block` is
+  `U256`, so `block - start` types with `start : U256` and needs no
+  conversion. Kit sites:
+  - `docs/host/README.md` line 68 (`family Env := makeEnv (now : Nat)
+    (caller : Addr)`), line 74 (the `Env` prose), line 239 (`now` is the
+    TIMESTAMP), line 272 (the chain test: the TIMESTAMP of a step is
+    `NOW`).
+  - `src/front/contract.c` line 7 (the `Env` family of the prelude);
+    `src/front/check.c` lines 2024 to 2069 (`make_env` and the script line
+    `NOW CALLER NAME ARGS`).
+  - `src/lower.c` lines 491 to 493 (the `Env` field names and the refusal
+    of other fields); `src/ir.h` lines 55 and 56 (`IR_ENV_NOW`,
+    `IR_ENV_CALLER`); `src/evm.c` line 239 (TIMESTAMP or CALLER);
+    `src/asm.h` line 25 (the opcode table gets `EVM_OP_NUMBER = 0x43`).
+  - `test/evmchain.sh` lines 125 to 128 (the genesis prestate gets the
+    block number next to the timestamp); `test/evm.sh` lines 10 and 11 and
+    the `test/run/*.script` files (the new column).
+
+  The S8 script change is one migration of the public call format and all
+  its producers and consumers. Use `NOW BLOCK CALLER NAME ARGS...`, keeping
+  `NOW : Nat` for timestamps and parsing `BLOCK` as a `U256` literal (for
+  example `100u`), independently of `NOW`. Update the parser, diagnostics
+  and script-format documentation together. In addition to the sites above:
+  - Migrate `test/same-state.script` and the embedded scripts and argument
+    checks in `test/run.sh`, `test/review.sh`, `test/runtool.c` and
+    `test/diff.sh`, as well as every `test/run/*.script` fixture. Preserve
+    each refusal row's intended diagnostic after the column is inserted.
+  - Update the column positions in both `test/evm.sh` and `test/diff.sh`
+    (including `row` and `script`), then pass the block number through
+    `step` to `genesis` for every call. Update deployment and
+    `test/mock.sh` callers of these shared helpers at the same time. Decode
+    the block literal into the prestate's `number` field; keep `timestamp`
+    sourced from `NOW`. This harness plumbing belongs to S8 so the existing
+    differential gate stays runnable after the format changes.
+
+  S8 checks that all migrated fixtures retain their behavior and that
+  `Env.block` evaluates to the supplied block number. S10 adds block-sensitive
+  guest/host/EVM rows: with `start = 100`, `window = 10`, `startOut = 100`
+  and `minOut = 50`, a quote of 75 is refused at block 100 and accepted at
+  block 105 with the same timestamp. Changing only the timestamp at block
+  100 must still refuse it. These rows detect a missing per-call block
+  update or an accidental TIMESTAMP/CALLER lowering.
+
+  Plan: the prelude, `make_env` and the complete script and harness migration
+  above in S8; NUMBER lowering and the block-sensitive chain rows in S10.
+  S2 ports orbit-lang, so the line numbers above can move; S8 finds the
+  sites again by name.
 
 ## 11. Questions for the USER (S1)
+
+All eight are RULED (S1, 2026-10-22; the quote is in section 1).
 
 - Q1 (O3): reading of R1. (a) ambient Pi, Sigma, Path, U unlimited;
   declared constructors only CM and CC. RECOMMENDED. (b) also treat Pi and
   Sigma as the base-change monad `R -> -` and comonad `E * -` and refuse
-  other uses.
+  other uses. RULED: (a).
 - Q2 (O4): cell criterion. (a) syntactic cell signature, cons lists
   refused, free monoid used. RECOMMENDED. (b) any parameterized type with a
-  checked lawful instance.
+  checked lawful instance. RULED: (a) ("check from the declaration's
+  shape").
 - Q3 (O7, O11): Enc. (a) identity cell monad with sealed eliminator,
   exponential ElGamal on BN254, MPC opening, general bind off chain.
   RECOMMENDED. (b) environment comonad reading. (c) a real FHE scheme
-  (TFHE) in the host only, no chain realization.
+  (TFHE) in the host only, no chain realization. RULED: (a).
 - Q4 (O6): decay. (a) `Progress -> Amount` in seconds. RECOMMENDED. (b) in
-  blocks.
+  blocks. RULED: (b), blocks (not the recommendation; O17).
 - Q5 (O10): governed parameter. (a) `window`. RECOMMENDED. (b) a fee. (c) a
-  solver set.
+  solver set. RULED: (a), `window` in blocks.
 - Q6 (O13, O15): (a) `ecrecover` and one contract. RECOMMENDED. (b) BN254
-  Schnorr owner keys. (c) two contracts.
+  Schnorr owner keys. (c) two contracts. RULED: (a).
 - Q7 (O8, O9): add `startOut` and read the prose formula. RECOMMENDED.
-- Q8 (O5): rename the DAO `Outcome` to `Decision`. RECOMMENDED.
+  RULED: yes.
+- Q8 (O5): rename the DAO `Outcome` to `Decision`. RECOMMENDED. RULED: yes.
