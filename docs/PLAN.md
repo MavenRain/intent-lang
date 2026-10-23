@@ -286,6 +286,21 @@ Route: S2 copies the orbit-lang front end, kernel `.lang` files and tests at
 the kernel to R1 (`REFUSE_CELL`). Later slices add `Enc`, `open`, the
 Sigma-protocol verifiers and the swap entries.
 
+S2 (DONE): the port is `git -C orbit-lang archive 2162fb2 src domain
+examples test gen Makefile | tar -x`, the removal of
+`examples/inventory.lang` and `test/check/domain-name.lang` (orbit-lang
+removed both in 7734007), and the listed doc edits: SPEC.md,
+docs/host/README.md, docs/VALIDATION.md, formers/FORMERS.md,
+formers/tcc-evm-contract.md and probe/CAPABILITY.md take the orbit text,
+with the four name edits that docs/STATUS.md lists. kitshift.py is not
+used: it keeps each shared file at the seed text, it drops `*.out` files
+such as `test/run/lists.out`, and the rename is not a token map (S2
+survey, section 5). The code has no rename site: the 23 `(orbit-lang Sn
+...)` comments are provenance and stay. `git archive` gives each file the
+commit time of 2162fb2, which is older than a `build/` from before the
+port. Thus `make check` uses the old binaries; the gate after a port is
+`make -B check`.
+
 ## 7. The contract
 
 One contract (O15) with these entries:
@@ -316,7 +331,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 |---|---|---|
 | S0 | Seed: the template with the tcc-evm-contract host, the design verbatim, this plan, the kit gate GREEN, the private remote | DONE |
 | S1 | USER rulings on the questions of section 11; record them in this plan | DONE |
-| S2 | Kernel port from orbit-lang 2162fb2 (section 6); the gate counts of orbit-lang | PLANNED |
+| S2 | Kernel port from orbit-lang 2162fb2 (section 6); the gate counts of orbit-lang | DONE: `make -B check` EXIT 0 with the orbit-lang counts: 41 examples, 19 parse, 171 check and 22 kit-only refusals, 159 evals, 2 proves, contracts 2 written and 5 refused, rings 6 built and 2 refused, 28 guest and 14 host differential rows, 5 runs, 10 run refusals, 8 asmtool, 3 builds, 16 lower refusals, 33 build checks, 20 dispatch, 43 evm steps, 14 precompile rows and 128 steps, 13 mock rows, 15 diff rows, 24 emit regressions, 0 failures |
 | S3 | R1 narrowing: `REFUSE_CELL`, kernel-derived unit and bind (counit and extend), the free monoid in place of the cons list, the former matrix rewritten as CM and CC rows | PLANNED |
 | S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | PLANNED |
 | S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | PLANNED |
@@ -374,21 +389,25 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   field `block : U256` to `Env`, lowered to NUMBER, and a block column in
   the `langc run` scripts. The kit gives `now` the type `Nat`; `block` is
   `U256`, so `block - start` types with `start : U256` and needs no
-  conversion. Kit sites:
-  - `docs/host/README.md` line 68 (`family Env := makeEnv (now : Nat)
-    (caller : Addr)`), line 74 (the `Env` prose), line 239 (`now` is the
-    TIMESTAMP), line 272 (the chain test: the TIMESTAMP of a step is
-    `NOW`).
-  - `src/front/contract.c` line 7 (the `Env` family of the prelude);
-    `src/front/check.c` lines 2024 to 2069 (`make_env` and the script line
+  conversion. Kit sites (line numbers of the S2 port):
+  - `docs/host/README.md` line 78 (`family Env := makeEnv (now : Nat)
+    (caller : Addr)`), line 84 (the `Env` prose), line 131 (the script
+    format `NOW CALLER NAME ARGS...`), line 249 (`now` is the TIMESTAMP),
+    line 282 (the chain test: the TIMESTAMP of a step is `NOW`).
+  - `src/front/contract.c` line 8 (the `Env` family of the prelude);
+    `src/front/check.c` lines 4300 to 4345 (`make_env` and the script line
     `NOW CALLER NAME ARGS`).
-  - `src/lower.c` lines 491 to 493 (the `Env` field names and the refusal
-    of other fields); `src/ir.h` lines 55 and 56 (`IR_ENV_NOW`,
-    `IR_ENV_CALLER`); `src/evm.c` line 239 (TIMESTAMP or CALLER);
+  - `src/lower.c` lines 623 to 625 (the `Env` field names and the refusal
+    of other fields); `src/ir.h` lines 56 and 57 (`IR_ENV_NOW`,
+    `IR_ENV_CALLER`); `src/evm.c` line 249 (TIMESTAMP or CALLER);
     `src/asm.h` line 25 (the opcode table gets `EVM_OP_NUMBER = 0x43`).
   - `test/evmchain.sh` lines 125 to 128 (the genesis prestate gets the
-    block number next to the timestamp); `test/evm.sh` lines 10 and 11 and
-    the `test/run/*.script` files (the new column).
+    block number next to the timestamp) and line 135 (`genesis 0 ''` of
+    `deploy`); `test/evm.sh` lines 10 and 11 and the `test/run/*.script`
+    files (the new column).
+  - New in the S2 port: `test/precompile.sh` lines 22 to 30 (`call` runs
+    `step 1`, at TIMESTAMP 1), one more caller of the shared `step`
+    helper.
 
   The S8 script change is one migration of the public call format and all
   its producers and consumers. Use `NOW BLOCK CALLER NAME ARGS...`, keeping
@@ -417,10 +436,10 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 
   Plan: the prelude, `make_env` and the complete script and harness migration
   above in S8; NUMBER lowering and the block-sensitive chain rows in S10.
-  S2 ports orbit-lang, so the line numbers above can move; S8 finds the
-  sites again by name.
+  The line numbers above are those of the S2 port (orbit-lang 2162fb2);
+  S3 to S7 can move them, so S8 finds the sites again by name.
 
-## 11. Questions for the USER (S1)
+## 11. Questions for the USER (S1, S2)
 
 All eight are RULED (S1, 2026-10-22; the quote is in section 1).
 
@@ -445,3 +464,54 @@ All eight are RULED (S1, 2026-10-22; the quote is in section 1).
 - Q7 (O8, O9): add `startOut` and read the prose formula. RECOMMENDED.
   RULED: yes.
 - Q8 (O5): rename the DAO `Outcome` to `Decision`. RECOMMENDED. RULED: yes.
+
+S2 adds these questions (OPEN, 2026-10-22).
+
+- Q-S2-1 (S2): the bLSAG domain tag of the ported code is the ASCII word
+  "orbit" (0x6f72626974: `src/front/blsag.c` line 12, `src/front/blsag.h`
+  line 23, `examples/zk.lang` line 2). (a) keep it until S9, where the
+  encrypted ballots change the signed message and the ring vectors are
+  made again; then use "intent". RECOMMENDED. (b) change it in S3 and make
+  the 14 precompile rows again. (c) keep "orbit" for good.
+- Q-S3-1 (S3, O4): the scope of REFUSE_CELL. The only declaration form is
+  `family`, and only `domain/domain.lang` can declare one: a guest program
+  with a `family` gets REFUSE_DATA (`src/front/check.c` line 3938). (a)
+  REFUSE_CELL checks the `family` declarations of `domain/domain.lang` and
+  the type builtins of the core-name table (`src/front/check.c` lines 135
+  to 138: Prod, Sum, Option, List; Map at line 191 is kit only).
+  RECOMMENDED. The expected results: Prod is the ambient non-dependent
+  Sigma (Q1 (a)) and stays; Option has the cell shape (`A` only in
+  `some`); Sum has the cell shape in `B` if a signature can have a
+  parameter (`A` indexes the nullary operations `inl`); List is a cons
+  list, so the free monoid replaces it (O4; List has 148 hit lines in 50
+  files). (b) REFUSE_CELL checks only the `family` declarations; the
+  builtins stay as they are.
+- Q-S3-2 (S3, O3): the type-level defs of type `U -> U` that use only
+  ambient formers: isProp, isSet, isContr, fiber, isEquiv and Equiv
+  (`domain/domain.lang`), Not (`examples/regimes.lang` and
+  `test/check/noselfcon-wrong.lang`) and Bundle
+  (`examples/state-aliases.lang`; its body uses List, see Q-S3-1). They
+  declare no constructor. (a) they are ambient constructions, and
+  REFUSE_CELL does not refuse them. RECOMMENDED. (b) REFUSE_CELL refuses
+  each def of type `U -> U`.
+- Q-S3-3 (S3, O4): the four families of `domain/domain.lang` that do not
+  have the cell shape: Bag (a cons list: `bagCons` takes an `A` and a
+  `Bag A n`; 104 hit lines in 7 files), Quot (two parameters, `A` in
+  `quot` and in `quotEq`; 31 lines in 7 files), and the mutual block
+  Charter and Ratified (`R` in `adoptTwice` and in `ratify`; 23 lines in
+  6 files and 9 lines in 5 files). (a) S3 rewrites each as a cell
+  signature (Bag as the free commutative monoid: the generator, the unit,
+  an associative and commutative operation and the set squash) or moves
+  it to an ambient construction, and changes its uses. RECOMMENDED. (b)
+  keep the four as kernel exceptions that REFUSE_CELL does not check.
+- Q-S3-4 (S3): `test/fronttool.c` and `test/pathtool.c` embed about 14
+  parameterized families as guest text. REFUSE_CELL changes the expected
+  result of each row without the cell shape (for example `family T (A :
+  Type 0) := leafT (v : A) | nodeT (l : T Nat) (r : T A)` at
+  `test/fronttool.c` line 392, which expects DOMAIN_FAMILY). (a) keep the
+  rows with the cell shape; change each other row to a family with the
+  cell shape that still tests its rule (HIT_BOUNDARY, DOMAIN_FAMILY and
+  the other codes); add one REFUSE_CELL row for each refused shape (cons
+  list, value parameter, a parameter in no constructor, mutual block).
+  RECOMMENDED. (b) change the expected result of each such row to
+  REFUSE_CELL.
