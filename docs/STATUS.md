@@ -21,6 +21,20 @@
   `(orbit-lang Sn ...)`, the DAO words (`Orbit`, `orbitProj`), the bLSAG
   domain tag "orbit" (Q-S2-1) and docs/VALIDATION.md, which records the
   final gate of orbit-lang.
+- S3 (REFUSE_CELL, rule R1): a domain family with a type parameter must be
+  a cell signature, else `REFUSE_CELL` (src/front/check.c: has_type_param,
+  cell_param, cell_header, cell_field, cell_generators). Quot is removed.
+  Charter and Ratified use Size for the rule type; Orbit is a family of the
+  front.c splice; Parity is on Size; ChoiceBag and OrbitN are indexed
+  families; Bag is the free commutative monoid. `FreeMon` (the free monoid,
+  with fmBind, fmFold, fmMap) is in domain/domain.lang; `List`, `nil`,
+  `cons` and `unfold` are kit only (a guest use gives `REFUSE_CELL`). New:
+  examples/freemon.lang, test/check/guest-list.lang, 5 REFUSE_CELL rows of
+  test/fronttool.c. Review adds 10 fronttool rows: 7 refusals for hidden
+  type arguments or invalid labels and 3 accepted cell signatures. Header
+  aliases are normalized, higher-kinded parameters and type indices are
+  refused, and fixed operation labels are admitted (PLAN section 2).
+  Open items O18 to O27 (docs/PLAN.md section 10).
 
 ## Remaining M0 work
 

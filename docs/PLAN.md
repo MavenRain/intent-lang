@@ -44,6 +44,20 @@ USER rulings (S1, 2026-10-22), verbatim:
   (`decay i ≤ o`) is the reading.
 - Q8: the orbit-lang DAO slot `Outcome` is renamed `Decision`.
 
+USER rulings (S3 step 0, 2026-10-22): the RECOMMENDED option (a) of each
+of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
+
+- Q-S2-1 (a): the bLSAG domain tag stays "orbit" until S9.
+- Q-S3-1 (a): REFUSE_CELL checks the `family` declarations of
+  `domain/domain.lang` and the type builtins. List (a cons list) is
+  replaced by the free monoid.
+- Q-S3-2 (a): the defs of type `U -> U` are ambient constructions.
+- Q-S3-3 (a): Bag, Quot, Charter and Ratified are rewritten as cell
+  signatures or moved to ambient constructions. Each law stays.
+- Q-S3-4 (a): the test rows with the cell shape stay; each other row gets a
+  family with the cell shape that tests the same rule; one REFUSE_CELL row
+  for each refused shape.
+
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
 
@@ -332,7 +346,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S0 | Seed: the template with the tcc-evm-contract host, the design verbatim, this plan, the kit gate GREEN, the private remote | DONE |
 | S1 | USER rulings on the questions of section 11; record them in this plan | DONE |
 | S2 | Kernel port from orbit-lang 2162fb2 (section 6); the gate counts of orbit-lang | DONE: `make -B check` EXIT 0 with the orbit-lang counts: 41 examples, 19 parse, 171 check and 22 kit-only refusals, 159 evals, 2 proves, contracts 2 written and 5 refused, rings 6 built and 2 refused, 28 guest and 14 host differential rows, 5 runs, 10 run refusals, 8 asmtool, 3 builds, 16 lower refusals, 33 build checks, 20 dispatch, 43 evm steps, 14 precompile rows and 128 steps, 13 mock rows, 15 diff rows, 24 emit regressions, 0 failures |
-| S3 | R1 narrowing: `REFUSE_CELL`, kernel-derived unit and bind (counit and extend), the free monoid in place of the cons list, the former matrix rewritten as CM and CC rows | PLANNED |
+| S3 | R1 narrowing: `REFUSE_CELL`, kernel-derived unit and bind (counit and extend), the free monoid in place of the cons list, the former matrix rewritten as CM and CC rows | DONE: `make -B check` EXIT 0 with the S2 counts, except 42 examples (+1, `examples/freemon.lang`) and 172 check refusals (+1, `test/check/guest-list.lang`); `test/fronttool.c` has 12 new REFUSE_CELL rows, 3 new accepted cell cases and 8 changed rows (no counter); the original mutant (cell checks and guest List refusal off) fails the original 5 rows and guest-list.lang; FORMERS.md section 5 has the CM row and a CC row (S4); O18 to O27 |
 | S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | PLANNED |
 | S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | PLANNED |
 | S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | PLANNED |
@@ -438,6 +452,42 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   above in S8; NUMBER lowering and the block-sensitive chain rows in S10.
   The line numbers above are those of the S2 port (orbit-lang 2162fb2);
   S3 to S7 can move them, so S8 finds the sites again by name.
+- O18 (S3, Q-S3-7): Charter and Ratified fix the rule type R to Size; the
+  block has no type parameter.
+- O19 (S3, Q-S3-8): Orbit is a family of the front.c orbit splice; def_at
+  matches a family declaration; orbitRow is `ua` of an iso (toOrbitN,
+  fromOrbitN), not refl. The statement stays.
+- O20 (S3): the Parity carrier is Size, not Nat.
+- O21 (S3, Q-S3-6): ChoiceBag and OrbitN are families `Size -> Type 0`
+  with no type parameter; Choice is written `Sum Unit Unit` in
+  domain.lang (R4). An elim on an indexed family needs a motive over all
+  its indices, so fromOrbitN dispatches on the size (sel5, OrbAt).
+- O22 (S3): Bag is the free commutative monoid, with no Size index (an
+  indexed bagOp has no comm path). The count lifts the sizeAdd laws by
+  truncExt; the lemma block is copied into hiit.lang and elim.lang. The
+  row elim-motive-index moved to Pos.
+- O23 (S3, QA1): two generators for one type parameter give REFUSE_CELL
+  (fronttool row Two). REFUSE_CELL comes before DOMAIN_FAMILY, so the T row
+  moved to a value parameter. Quot is removed.
+- O24 (S3, QB1): List, nil, cons and unfold are VIS_CELL. Kit mode,
+  domain.lang and the contract prelude keep List (the host ABI); a guest
+  use gives REFUSE_CELL at resolve_head, and a guest uses FreeMon. The
+  check is by name, so eval output that prints List is not checked again.
+- O25 (S3): these kit example rows stay on List. laws.lang xs, noNats,
+  foldNil, foldSum and algebra.lang sumList, lengthOf, ones (sumTo): a
+  FreeMon fold into Nat needs isSet Nat (none: UIP is refused).
+  algebra.lang down and stop: unfold has no FreeMon form. state-aliases.lang
+  Bundle: a state field is first order (a FreeMon field gives
+  REFUSE_STATE). laws mapId, formers xs and empty, monad single, doubled
+  and small moved to FreeMon (eval row `formers xs` has the FreeMon text).
+- O26 (S3): the F1 to F15 rows of the FORMERS.md matrix stay as the kit
+  record; S3 adds the CM row and a CC row (PLANNED, S4).
+- O27 (S3 review): normalize header aliases before the cell-shape check;
+  refuse higher-kinded parameters and type indices, which otherwise hide
+  non-cell constructors. Admit closed base data as operation labels, as
+  specified in section 2. Ten additional fronttool rows cover these cases
+  and distinguish fixed labels from parameter-dependent or wrapped
+  recursive fields. Seven new rows fail with the original staged checker.
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -465,14 +515,15 @@ All eight are RULED (S1, 2026-10-22; the quote is in section 1).
   RULED: yes.
 - Q8 (O5): rename the DAO `Outcome` to `Decision`. RECOMMENDED. RULED: yes.
 
-S2 adds these questions (OPEN, 2026-10-22).
+S2 adds these questions. All five are RULED (S3 step 0, 2026-10-22): the
+USER took the RECOMMENDED option of each.
 
 - Q-S2-1 (S2): the bLSAG domain tag of the ported code is the ASCII word
   "orbit" (0x6f72626974: `src/front/blsag.c` line 12, `src/front/blsag.h`
   line 23, `examples/zk.lang` line 2). (a) keep it until S9, where the
   encrypted ballots change the signed message and the ring vectors are
   made again; then use "intent". RECOMMENDED. (b) change it in S3 and make
-  the 14 precompile rows again. (c) keep "orbit" for good.
+  the 14 precompile rows again. (c) keep "orbit" for good. RULED: (a).
 - Q-S3-1 (S3, O4): the scope of REFUSE_CELL. The only declaration form is
   `family`, and only `domain/domain.lang` can declare one: a guest program
   with a `family` gets REFUSE_DATA (`src/front/check.c` line 3938). (a)
@@ -485,7 +536,7 @@ S2 adds these questions (OPEN, 2026-10-22).
   parameter (`A` indexes the nullary operations `inl`); List is a cons
   list, so the free monoid replaces it (O4; List has 148 hit lines in 50
   files). (b) REFUSE_CELL checks only the `family` declarations; the
-  builtins stay as they are.
+  builtins stay as they are. RULED: (a).
 - Q-S3-2 (S3, O3): the type-level defs of type `U -> U` that use only
   ambient formers: isProp, isSet, isContr, fiber, isEquiv and Equiv
   (`domain/domain.lang`), Not (`examples/regimes.lang` and
@@ -493,7 +544,7 @@ S2 adds these questions (OPEN, 2026-10-22).
   (`examples/state-aliases.lang`; its body uses List, see Q-S3-1). They
   declare no constructor. (a) they are ambient constructions, and
   REFUSE_CELL does not refuse them. RECOMMENDED. (b) REFUSE_CELL refuses
-  each def of type `U -> U`.
+  each def of type `U -> U`. RULED: (a).
 - Q-S3-3 (S3, O4): the four families of `domain/domain.lang` that do not
   have the cell shape: Bag (a cons list: `bagCons` takes an `A` and a
   `Bag A n`; 104 hit lines in 7 files), Quot (two parameters, `A` in
@@ -504,6 +555,7 @@ S2 adds these questions (OPEN, 2026-10-22).
   an associative and commutative operation and the set squash) or moves
   it to an ambient construction, and changes its uses. RECOMMENDED. (b)
   keep the four as kernel exceptions that REFUSE_CELL does not check.
+  RULED: (a).
 - Q-S3-4 (S3): `test/fronttool.c` and `test/pathtool.c` embed about 14
   parameterized families as guest text. REFUSE_CELL changes the expected
   result of each row without the cell shape (for example `family T (A :
@@ -514,4 +566,30 @@ S2 adds these questions (OPEN, 2026-10-22).
   the other codes); add one REFUSE_CELL row for each refused shape (cons
   list, value parameter, a parameter in no constructor, mutual block).
   RECOMMENDED. (b) change the expected result of each such row to
-  REFUSE_CELL.
+  REFUSE_CELL. RULED: (a).
+
+The S3 survey (2026-10-22; `~/Documents/intent-lang-work/S3-design-A-check.md`,
+`-B-list.md`, `-C-families.md`) adds these questions. All four are RULED
+(2026-10-22): the USER took the RECOMMENDED option (a) of each.
+
+- Q-S3-5 (Q-S3-1): guest programs use no List; about 190 of its 218 lines
+  are the kit host ABI (entry results, `emit`, storage, the zk and
+  ecPairing word lists, the prove and run output). (a) List, nil, cons and
+  unfold become kit only (as Map is); a guest List gets REFUSE_CELL; the
+  free monoid goes into `domain/domain.lang`; the kit algebra examples move
+  to it where they can; the host ABI stays on List. RECOMMENDED. (b) move
+  the host ABI to the free monoid too. RULED: (a).
+- Q-S3-6 (Q-S3-3, a STOP of the survey): `examples/bagorbit.lang` proves
+  `Equiv (OrbitN k) (Bag Choice k)`, which needs the Size index and the
+  cons form. (a) two indexed families with no type parameter in
+  `domain/domain.lang`, `ChoiceBag : Size -> Type 0` (the old cons Bag at
+  `Sum Unit Unit`) and `OrbitN : Size -> Type 0`; the proof stays; Bag
+  becomes the free commutative monoid. RECOMMENDED. (b) re-prove over the
+  free commutative monoid. (c) the USER narrows the law. RULED: (a).
+- Q-S3-7 (Q-S3-3): Charter and Ratified. (a) fix the rule type R to Size;
+  the block has no parameter. RECOMMENDED. (b) R := Decision in the front.c
+  DAO splice. RULED: (a).
+- Q-S3-8 (Q-S3-3): Quot is not a cell (R is a value parameter); Orbit
+  becomes a family of the front.c splice. The parity quotient of
+  `examples/quot.lang` and `examples/elim.lang` gets the carrier (a) Size;
+  Nat stays internal. RECOMMENDED. (b) Nat. RULED: (a).
