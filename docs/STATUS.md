@@ -45,6 +45,17 @@
   The domain has `Stream` with sExtend and sDuplicate. New:
   examples/cocell.lang (the comonad laws), 5 eval rows,
   test/check/cofamily-guest.lang and cofamily-state.lang, 27 fronttool rows.
+- S5 (sealed Enc, rule O7): `sealed family` and `law def` in
+  domain/domain.lang only (a guest use gives `REFUSE_DATA`). The domain has
+  `sealed family Enc` (the identity cell monad), encBind, encMap, encOp2
+  and the law defs decrypt and observe. check_def_body (src/front/check.c:
+  law_uses, law_type) marks a law-only def and gives `REFUSE_LAW` to a
+  guest law-only def whose codomain is not a Path or a Trunc1. The host
+  model is exponential ElGamal over BN254 G1 (src/front/elgamal.c, not
+  guest visible). New: examples/enc.lang and enc-ideal.lang (kit), 7 eval
+  rows, 8 check refusals, 11 fronttool rows, test/elgamaltool.c (8 rows).
+  The review retains checked declared types and binder annotations so
+  normalization and erasure cannot discard law-only references.
 
 ## Remaining M0 work
 

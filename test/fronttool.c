@@ -10,7 +10,7 @@
 /* checked parses TEXT with ORIGIN and checks it in MODE. A domain row is
    trusted text in kit mode; a guest row (orbit-lang S3) is program text in
    guest mode. */
-static int checked(const char *text, Origin origin, CheckMode mode, const char *want) {
+static int checked_in(const char *domain_text, const char *text, Origin origin, CheckMode mode, const char *want) {
   Arena arena;
   Diag diag;
   TokenList tokens = {0};
@@ -18,7 +18,10 @@ static int checked(const char *text, Origin origin, CheckMode mode, const char *
   Machine machine;
   arena_init(&arena, (size_t)1 << 24);
   diag_init(&diag);
-  int ok = lex_source(&arena, "test-domain", text, strlen(text), &tokens, &diag)
+  int ok = domain_text == NULL
+    || (lex_source(&arena, "test-prelude", domain_text, strlen(domain_text), &tokens, &diag)
+        && parse_source(&arena, "test-prelude", ORIGIN_DOMAIN, &tokens, &decls, &diag));
+  ok = ok && lex_source(&arena, "test-domain", text, strlen(text), &tokens, &diag)
     && parse_source(&arena, "test-domain", origin, &tokens, &decls, &diag)
     && check_program(&arena, &decls, &machine, &diag, mode);
   int passed = want == NULL ? ok : !ok && diag.code != NULL && strcmp(diag.code, want) == 0;
@@ -33,6 +36,20 @@ static int checked(const char *text, Origin origin, CheckMode mode, const char *
   }
   arena_release(&arena);
   return passed;
+}
+
+static int checked(const char *text, Origin origin, CheckMode mode, const char *want) {
+  return checked_in(NULL, text, origin, mode, want);
+}
+
+static int law_guest(const char *text, const char *want) {
+  return checked_in(
+    "family Size := sz0 | szS (szPred : Size)\n"
+    "family Trunc1 (A : Type 0) := trunc1 (trunc1Of : A)\n"
+    "  | squash1 (squash1X : Trunc1 A) (squash1Y : Trunc1 A) (i : I) [ ~i -> squash1X, i -> squash1Y ]\n"
+    "sealed family Enc (A : Type 0) := encEta (encOf : A)\n"
+    "law def decrypt : (A : Type 0) -> Enc A -> A := fun A c => fold (fun a => a) c\n",
+    text, ORIGIN_PROGRAM, CHECK_GUEST, want);
 }
 
 static int domain(const char *text, const char *want) {
@@ -515,6 +532,28 @@ int main(void) {
   ok &= domain("cofamily Pf (A : Type 0) := pfCorec (pfOut : A) (pfT : Pf A) (pfP : Path (Pf A) pfT pfT)", "REFUSE_CELL");
   ok &= domain("cofamily Cf (A : Type 0) := cfCorec (cfOut : A) (cfNext : Cf A -> List (Cf A))", "REFUSE_CELL");
   ok &= domain("cofamily Lu (A : Type 0) := luCorec (luOut : A) (luNext : Type 0 -> Lu A)", "REFUSE_CELL");
+  /* `sealed family` and `law def` are domain-only modifiers (S5, rule O7).
+     A sealed family is a cell monad; a program cannot use either. */
+  ok &= domain("sealed family Sl (A : Type 0) := slEta (slOf : A)", NULL);
+  ok &= domain("sealed family Sl (A : Type 0) := slEta (slOf : A)\n"
+               "law def slOut : (A : Type 0) -> Sl A -> A := fun A c => fold (fun a => a) c", NULL);
+  ok &= domain("sealed family Sc := sc0 | sc1", "REFUSE_CELL");
+  ok &= guest("sealed family Sl (A : Type 0) := slEta (slOf : A)", "REFUSE_DATA");
+  ok &= guest("law def lawId : Type 1 := Type 0", "REFUSE_DATA");
+  /* Law references in types and annotations must survive normalization and
+     erasure, including when the annotated variable is unused. */
+  ok &= law_guest("def erased : Enc Size -> Size := fun (c : Enc Size) =>\n"
+                  "  (fun (f : Path Size (decrypt Size c) (decrypt Size c) -> Size) => sz0) (fun p => sz0)", "REFUSE_LAW");
+  ok &= law_guest("def erasedType : Path Size (decrypt Size (encEta Size sz0)) sz0 -> Size := fun p => sz0", "REFUSE_LAW");
+  ok &= law_guest("def lawBody : (c : Enc Size) -> Path Size sz0 sz0 :=\n"
+                  "  fun c => fun (i : I) => (fun (x : Size) => sz0) (decrypt Size c)\n"
+                  "def erasedRelay : Path Size (lawBody (encEta Size sz0) @ i0) sz0 -> Size := fun p => sz0", "REFUSE_LAW");
+  ok &= law_guest("def checkedAnn : Size :=\n"
+                  "  (fun (f : Path Size sz0 sz0 -> Size) => sz0)\n"
+                  "    (fun (p : Path Size (decrypt Size (encEta Size sz0)) sz0) => sz0)", "REFUSE_LAW");
+  ok &= law_guest("def truncatedAnn : Enc Size -> Size := fun (c : Enc Size) =>\n"
+                  "  (fun (f : Trunc1 (Path Size (decrypt Size c) (decrypt Size c)) -> Size) => sz0) (fun p => sz0)", NULL);
+  ok &= law_guest("def shadowed : (decrypt : Size) -> Size := fun decrypt => decrypt", NULL);
   /* The generated names are R4 names: a bisimulation name, a destructor
      name and a corecursor name that an earlier def holds are refused. */
   ok &= domain("def StrmBisim : Type 1 := Type 0\n"

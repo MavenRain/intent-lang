@@ -63,6 +63,12 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
   observation, other fields `D A` or `E -> D A` with E closed data; the
   clause name is the corecursor and `DBisim` is generated; Stream only; no
   EVM lowering.
+- Q-S5-1 .. Q-S5-6 (a), USER 2026-10-23: "Rule all defaults for Q-S5-01
+  . . . Q-S5-06". `sealed family Enc` in `domain/domain.lang`; `law def
+  decrypt` and the law-only rule (Trunc1 arguments exempt, REFUSE_LAW);
+  `observe` by `trunc1`, `Trunc1 A` spelling; host ElGamal in
+  src/front/elgamal.{c,h}, not guest visible; no EVM lowering (an `Enc`
+  state field is REFUSE_STATE); `open` and `Quorum` in S6.
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -354,7 +360,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S2 | Kernel port from orbit-lang 2162fb2 (section 6); the gate counts of orbit-lang | DONE: `make -B check` EXIT 0 with the orbit-lang counts: 41 examples, 19 parse, 171 check and 22 kit-only refusals, 159 evals, 2 proves, contracts 2 written and 5 refused, rings 6 built and 2 refused, 28 guest and 14 host differential rows, 5 runs, 10 run refusals, 8 asmtool, 3 builds, 16 lower refusals, 33 build checks, 20 dispatch, 43 evm steps, 14 precompile rows and 128 steps, 13 mock rows, 15 diff rows, 24 emit regressions, 0 failures |
 | S3 | R1 narrowing: `REFUSE_CELL`, kernel-derived unit and bind (counit and extend), the free monoid in place of the cons list, the former matrix rewritten as CM and CC rows | DONE: `make -B check` EXIT 0 with the S2 counts, except 42 examples (+1, `examples/freemon.lang`) and 172 check refusals (+1, `test/check/guest-list.lang`); `test/fronttool.c` has 12 new REFUSE_CELL rows, 3 new accepted cell cases and 8 changed rows (no counter); the original mutant (cell checks and guest List refusal off) fails the original 5 rows and guest-list.lang; FORMERS.md section 5 has the CM row and a CC row (S4); O18 to O27 |
 | S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | DONE (Q-S4-1 .. Q-S4-6 (a)): `cofamily Stream` in domain/domain.lang, the laws in examples/cocell.lang, mutants in docs/VALIDATION.md |
-| S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | PLANNED |
+| S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | DONE: `make -B check` EXIT 0 with the S4 counts, except 45 examples (+2, `examples/enc.lang`, `examples/enc-ideal.lang`), 182 check refusals (+8: enc-fold, enc-decrypt, enc-leak, enc-annot, enc-proj, enc-relay REFUSE_LAW, enc-state REFUSE_STATE, law-guest REFUSE_DATA), 171 evals (+7) and the new line `elgamal regressions: passed` (`src/front/elgamal.c`, `test/elgamaltool.c`); `test/fronttool.c` has 11 new rows (6 from review); mutants k1 to k6 killed (7 of 7, docs/VALIDATION.md) |
 | S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | PLANNED |
 | S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | PLANNED |
 | S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | PLANNED |
@@ -649,3 +655,50 @@ recommendation (quote in section 1).
   function; a Stream state field is refused (expected REFUSE_STATE, as a
   FreeMon field, O25) and gets a test/check row. RECOMMENDED. (b) lower a
   finite prefix of observations. RULED: (a).
+
+S5 adds these questions (survey `~/Documents/intent-lang-work/S5-survey.md`;
+probe `~/Documents/intent-lang-work/S5-probe.lang`). All six are RULED (S5
+build step 0, 2026-10-23): the USER took each recommendation (quote in
+section 1).
+
+- Q-S5-1 (S5, O7): the realization of `Enc`. Survey: the probe checks the
+  laws on the S4 kernel with one domain line `family Enc (A : Type 0) :=
+  encEta (encOf : A)` (the S3 cell check admits it). (a) `sealed family
+  Enc` in domain.lang: `sealed` is a domain-only modifier and a new flag of
+  FamilyInfo; encBind, encMap and the op* helpers are domain defs by fold.
+  RECOMMENDED. (b) a primitive former (an Op, builtins, reduce_op cases and
+  conversion rules). RULED: (a).
+- Q-S5-2 (S5, O7): how `decrypt` stays law-only. The probe shows two leaks
+  of the plain family: a guest fold on Enc is decrypt, and a law applied at
+  `i0` computes decrypt (`leakLaw c @ i0`), because a path end point in any
+  type in scope is a term. (a) `law def decrypt` in domain.lang (a
+  domain-only modifier, a new DefInfo flag); a guest def is law-only when
+  its checked type or body mentions, outside a `Trunc1` argument, a
+  law-only def or an elim or fold of a sealed family; a law-only guest def
+  must have a law type (codomain a Path type or `Trunc1 X`), else the new
+  code REFUSE_LAW; kit mode and the domain are exempt. RECOMMENDED. (b)
+  dynamic: decrypt reduces only in conversion and is a stuck residual in
+  program evaluation (a mode flag, a flush of the lazy def values). (c) the
+  seal and a direct-use check only; the `i0` leak stays open. RULED: (a).
+- Q-S5-3 (S5, O7): `observe` and `squash`. The kernel has `Trunc1` with the
+  path cell `squash1` (domain.lang). (a) `observe := trunc1 A (decrypt A c)`
+  in domain.lang (law-only by Q-S5-2 (a), allowed by its Trunc1 codomain);
+  the privacy path is a guest theorem by squash1 in examples/enc.lang;
+  `‖ A ‖` stays spelled `Trunc1 A`; the bundle view waits for S8.
+  RECOMMENDED. (b) as (a) plus a `‖ A ‖` notation in the parser. RULED: (a).
+- Q-S5-4 (S5, O11, O16): the host ElGamal. (a) src/front/elgamal.{c,h} on
+  bn254.c, not guest visible (the evaluator stays the ideal model):
+  encrypt `(r G, m G + r PK)` with r by keccak (no RNG in the repo), add,
+  scale by a public scalar, decrypt by `C2 - sk C1` and a bounded
+  baby-step giant-step (bits <= 40); a driver test/elgamaltool.c ("elgamal
+  regressions: passed") with round trip, add, scale, the bound refusal,
+  bits > 40 and an off-curve ciphertext; gate rows at 16 bits.
+  RECOMMENDED. (b) guest-visible kit ops elgEnc and elgDec with eval rows.
+  (c) move the host ElGamal to S6. RULED: (a).
+- Q-S5-5 (S5): the EVM side. (a) no lowering in S5: an `Enc U256` state
+  field is REFUSE_STATE (test/check/enc-state.lang, listed in kit.txt); the
+  chain form (two G1 points) is S10. RECOMMENDED. (b) lower `Enc U256` now
+  as four words. RULED: (a).
+- Q-S5-6 (S5): `open` and `Quorum`. (a) both stay in S6 (shares, DLEQ,
+  Lagrange in the exponent); S6 reuses elgamal.c. RECOMMENDED. (b) a stub
+  `open` in S5. RULED: (a).
