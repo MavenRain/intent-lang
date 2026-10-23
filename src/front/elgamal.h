@@ -49,8 +49,12 @@ void elg_encrypt(ElgCipher *out, const G1 *pk, const U256 *m, const U256 *r);
 void elg_add(ElgCipher *out, const ElgCipher *a, const ElgCipher *b);
 /* (k C1, k C2): the ciphertext of k m for a public K. OUT can be CT. */
 void elg_scale(ElgCipher *out, const ElgCipher *ct, const U256 *k);
-/* C2 minus sk C1 = m G, then the m below 2^BITS with that point. *M gets m
-   on ELG_FOUND. */
+/* The m below 2^BITS with m G = POINT, by baby step giant step (slice S6
+   b1: the search of elg_decrypt, for the threshold opening). *M gets m on
+   ELG_FOUND. ELG_REFUSED when BITS is above ELG_BITS_MAX or POINT is off the
+   curve. */
+ElgResult elg_log(uint64_t *m, const G1 *point, uint32_t bits);
+/* C2 minus sk C1 = m G, then elg_log. *M gets m on ELG_FOUND. */
 ElgResult elg_decrypt(uint64_t *m, const U256 *sk, const ElgCipher *ct, uint32_t bits);
 
 #endif

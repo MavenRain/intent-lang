@@ -94,6 +94,44 @@ else
   call "out aa" addrWord 0x00000000000000000000000000000000000000aa
 fi
 
+# The threshold opening of examples/threshold.lang (S6, Q-S6-6): the words of
+# `build/thresholdtool words` (n 3, t 2, m 1234, quorum {1, 2}; l2 = r - 1).
+# Each ecMul and ecAdd word was confirmed at build (2026-10-23, evm 1.14.12)
+# with a direct `evm run` to 0x..06 or 0x..07. z1 + 1 fails dleqOk, m 1235
+# fails openOk.
+prog=examples/threshold.lang
+pk1x=0x1f8998908f24942c91e985c7d47ef1a72c4b50225e2eab95d035b5f35d266fb6u
+pk1y=0x08e06bf52945ba6717f9228de2d3dba0ca205f0725120f2da2b61c3eaab51797u
+c1x=0x06107e6b6511db3eb78edf5b81e309c1ce2d43ffc1f99878add70ec94232f5bdu
+c1y=0x0c417387621eb1e2f78895cafc1ba63b3141ad838c1718913898a716e2513dccu
+d1x=0x25c1f7b394999d8fb70dff84f4bcc6315445533a3ddc6cd2075111363b987422u
+d1y=0x10bfba20e712970a914f6792b77ce1bd500fc1ec966107759a7c4870dbfbfff8u
+a1x=0x1caead4e0da42c1d4db0d09ce41d43f5538a8087c752bcc266b550ba530d593cu
+a1y=0x2cfbc233ebdfb0af1d6404d3081c9a7fea2878dcc855030affac01152287c93au
+b1x=0x0248fe02c6a21f55aff1f6667808aa65978ad670f286d99420a02db797db175eu
+b1y=0x0c78621e9e0babfefd760556856aed8940676de5f747157cdfd050e24d54c343u
+z1=0x08fad840104489f5dc19df835b78abe11a9eb08068adb6954a52ed9dddafd5a3u
+z1bad=0x08fad840104489f5dc19df835b78abe11a9eb08068adb6954a52ed9dddafd5a4u
+d2x=0x3029e90d9f4a5c80381a88ec072552599f260a245b78110965e3ce4770cb80fcu
+d2y=0x1962d546253839f2e4952e4b2ec720846ba74a00520fb5957bb54a602f58d86au
+l1=2u
+l2=0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000u
+kx=0x24347111ca7ece60147a3c9f770e870aae28c84db57202855318ed8ce2808016u
+ky=0x230ffa7d4bbc30d27d9eeba70a08008b72b6334751005274ac8aeb5c8fe4d19du
+c2x=0x1bfeca9f35b9d24a06420451a37fff41a575a6e5ecf0d4a054d0120d08627aeeu
+c2y=0x1d482f62e329fc2ee7c5579e6296989e50fc6b3f68ba6db6b4e20b4914552627u
+if ! deploy "$prog"; then
+  echo "FAIL threshold deploy: $(head -n 1 "$tmp/dump")"
+  fail=$((fail + 1))
+else
+  call "out 1" dleqOk "$pk1x" "$pk1y" "$c1x" "$c1y" "$d1x" "$d1y" "$a1x" "$a1y" "$b1x" "$b1y" "$z1"
+  call "out 0" dleqOk "$pk1x" "$pk1y" "$c1x" "$c1y" "$d1x" "$d1y" "$a1x" "$a1y" "$b1x" "$b1y" "$z1bad"
+  call "out 24347111ca7ece60147a3c9f770e870aae28c84db57202855318ed8ce2808016" combineX "$d1x" "$d1y" "$l1" "$d2x" "$d2y" "$l2"
+  call "out 230ffa7d4bbc30d27d9eeba70a08008b72b6334751005274ac8aeb5c8fe4d19d" combineY "$d1x" "$d1y" "$l1" "$d2x" "$d2y" "$l2"
+  call "out 1" openOk "$c2x" "$c2y" "$kx" "$ky" 1234u
+  call "out 0" openOk "$c2x" "$c2y" "$kx" "$ky" 1235u
+fi
+
 # The private cast of examples/zkcast.lang (S8 B3a): the ring (p0, p1) at poll 0.
 # The six words are the `dao b0` row of test/prove/expect.txt (choice, c_1, s_1,
 # s_2, I.x, I.y): six refusals revert (S8 B3b), the valid cast enters, count 1

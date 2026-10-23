@@ -56,6 +56,20 @@
   rows, 8 check refusals, 11 fronttool rows, test/elgamaltool.c (8 rows).
   The review retains checked declared types and binder annotations so
   normalization and erasure cannot discard law-only references.
+- S6 (threshold opening, rule O7): domain/domain.lang has `family Quorum`
+  (t of n, public) and the law def `open` (decrypt for each quorum). A
+  guest use gives `REFUSE_LAW` with no checker edit. The host opening is
+  src/front/threshold.c: a trusted dealer, Shamir shares over Fr, one
+  Chaum-Pedersen (DLEQ) proof for each partial decryption with the guest
+  `hash` chain as the challenge, and Lagrange in the exponent before the
+  BSGS of elg_log (src/front/elgamal.c). New: examples/open.lang,
+  examples/threshold.lang (kit: the chain DLEQ, combine and open views), 6
+  eval rows, 2 check refusals, 3 fronttool rows, test/thresholdtool.c (15
+  rows) and 6 precompile steps. examples/storage.lang renames its state
+  field `open` to `isOpen` (a domain name is reserved, rule R4).
+  The dealer requires fresh private seed entropy for its polynomial
+  coefficients. Review reproduced master-key recovery from one share
+  with the original public coefficients and added two dealer regressions.
 
 ## Remaining M0 work
 

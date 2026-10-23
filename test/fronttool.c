@@ -48,7 +48,9 @@ static int law_guest(const char *text, const char *want) {
     "family Trunc1 (A : Type 0) := trunc1 (trunc1Of : A)\n"
     "  | squash1 (squash1X : Trunc1 A) (squash1Y : Trunc1 A) (i : I) [ ~i -> squash1X, i -> squash1Y ]\n"
     "sealed family Enc (A : Type 0) := encEta (encOf : A)\n"
-    "law def decrypt : (A : Type 0) -> Enc A -> A := fun A c => fold (fun a => a) c\n",
+    "law def decrypt : (A : Type 0) -> Enc A -> A := fun A c => fold (fun a => a) c\n"
+    "family Quorum := quorum (quorumT : Size) (quorumN : Size)\n"
+    "law def open : (A : Type 0) -> Quorum -> Enc A -> A := fun A q c => decrypt A c\n",
     text, ORIGIN_PROGRAM, CHECK_GUEST, want);
 }
 
@@ -554,6 +556,13 @@ int main(void) {
   ok &= law_guest("def truncatedAnn : Enc Size -> Size := fun (c : Enc Size) =>\n"
                   "  (fun (f : Trunc1 (Path Size (decrypt Size c) (decrypt Size c)) -> Size) => sz0) (fun p => sz0)", NULL);
   ok &= law_guest("def shadowed : (decrypt : Size) -> Size := fun decrypt => decrypt", NULL);
+  /* open is a law def (S6, rule O7): a guest use outside a law type is
+     refused, a use in a Trunc1 argument is not law-only, and the fields of
+     a Quorum are public data. */
+  ok &= law_guest("def peekOpen : Quorum -> Enc Size -> Size := fun q c => open Size q c", "REFUSE_LAW");
+  ok &= law_guest("def settleOpen : (q : Quorum) -> (c : Enc Size) -> Trunc1 (Path Size (open Size q c) sz0) -> Size :=\n"
+                  "  fun q c p => sz0", NULL);
+  ok &= law_guest("def quorumOf : Quorum -> Size := fun q => quorumT q", NULL);
   /* The generated names are R4 names: a bisimulation name, a destructor
      name and a corecursor name that an earlier def holds are refused. */
   ok &= domain("def StrmBisim : Type 1 := Type 0\n"

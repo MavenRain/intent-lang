@@ -69,6 +69,13 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
   `observe` by `trunc1`, `Trunc1 A` spelling; host ElGamal in
   src/front/elgamal.{c,h}, not guest visible; no EVM lowering (an `Enc`
   state field is REFUSE_STATE); `open` and `Quorum` in S6.
+- Q-S6-1 .. Q-S6-7 (a), USER 2026-10-23: "All (a) (Recommended)".
+  `family Quorum := quorum (quorumT : Size) (quorumN : Size)` and `law def
+  open` in `domain/domain.lang`; host threshold opening in
+  src/front/threshold.{c,h} on `elg_log`; a trusted dealer, Shamir shares
+  and Chaum-Pedersen proofs (A, B, z); every row at bits 16; chain rows in
+  examples/threshold.lang; the opener gives lambda_i (no chain check until
+  S10).
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -361,7 +368,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S3 | R1 narrowing: `REFUSE_CELL`, kernel-derived unit and bind (counit and extend), the free monoid in place of the cons list, the former matrix rewritten as CM and CC rows | DONE: `make -B check` EXIT 0 with the S2 counts, except 42 examples (+1, `examples/freemon.lang`) and 172 check refusals (+1, `test/check/guest-list.lang`); `test/fronttool.c` has 12 new REFUSE_CELL rows, 3 new accepted cell cases and 8 changed rows (no counter); the original mutant (cell checks and guest List refusal off) fails the original 5 rows and guest-list.lang; FORMERS.md section 5 has the CM row and a CC row (S4); O18 to O27 |
 | S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | DONE (Q-S4-1 .. Q-S4-6 (a)): `cofamily Stream` in domain/domain.lang, the laws in examples/cocell.lang, mutants in docs/VALIDATION.md |
 | S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | DONE: `make -B check` EXIT 0 with the S4 counts, except 45 examples (+2, `examples/enc.lang`, `examples/enc-ideal.lang`), 182 check refusals (+8: enc-fold, enc-decrypt, enc-leak, enc-annot, enc-proj, enc-relay REFUSE_LAW, enc-state REFUSE_STATE, law-guest REFUSE_DATA), 171 evals (+7) and the new line `elgamal regressions: passed` (`src/front/elgamal.c`, `test/elgamaltool.c`); `test/fronttool.c` has 11 new rows (6 from review); mutants k1 to k6 killed (7 of 7, docs/VALIDATION.md) |
-| S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | PLANNED |
+| S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | DONE: `make -B check` EXIT 0 with the S5 counts, except 47 examples (+2, `examples/open.lang`, `examples/threshold.lang`), 184 check refusals (+2: open-leak REFUSE_LAW, quorum-state REFUSE_STATE), 177 evals (+6), 134 precompile steps (+6) and the new line `threshold regressions: passed` (`src/front/threshold.c`, `test/thresholdtool.c`, 15 rows); `test/fronttool.c` has 3 new rows; `examples/storage.lang` field `open` renamed `isOpen` (R4); mutants t1 to t4, g1, c1 killed (6 of 6, docs/VALIDATION.md) |
 | S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | PLANNED |
 | S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | PLANNED |
 | S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | PLANNED |
@@ -504,6 +511,16 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   Its positions depend on the `F` shape, so the S4 position encoding does
   not give it. It needs M-types (native codata, or the limit of the finite
   approximations). S4 refuses the field with REFUSE_CELL.
+- O29 (S6, Q-S6-5): the BSGS walk is affine (one field inverse for each
+  step). A Jacobian walk with a batch inverse makes a larger plaintext
+  bound practical. S6 keeps every row at bits 16.
+- O30 (S6, Q-S6-4): the dealer is trusted (the host deals the Shamir
+  shares using fresh private seed entropy for the polynomial coefficients).
+  A distributed key generation (DKG) replaces the dealer.
+  docs/VALIDATION.md states the assumption.
+- O31 (S6, Q-S6-7): the chain takes the Lagrange coefficients as hints and
+  does not check them. The check lambda_i prod (x_j - x_i) = prod x_j mod r
+  needs a word mulmod (S10, the chain form).
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -702,3 +719,66 @@ section 1).
 - Q-S5-6 (S5): `open` and `Quorum`. (a) both stay in S6 (shares, DLEQ,
   Lagrange in the exponent); S6 reuses elgamal.c. RECOMMENDED. (b) a stub
   `open` in S5. RULED: (a).
+
+S6 adds these questions (survey `~/Documents/intent-lang-work/S6-survey.md`).
+Each has a recommended (a). All seven are RULED (S6 build step 0,
+2026-10-23; the quote is in section 1).
+
+- Q-S6-1 (S6, O7): the shape of `Quorum`. (a) `family Quorum := quorum
+  (quorumT : Size) (quorumN : Size)` in domain.lang, after observe: the
+  public part of a threshold opening (t of n), not sealed, no parameter (so
+  not a type constructor under R1). The shares, partial decryptions and
+  DLEQ proofs are host data, as the ElGamal ciphertext. RECOMMENDED. (b) as
+  (a) with Nat fields (Nat literals are kit items in guest mode). (c) a
+  Quorum that also holds the share indices (`FreeMon Size`). RULED: (a).
+- Q-S6-2 (S6, O7): `open` and its laws. (a) `law def open : (A : Type 0)
+  -> Quorum -> Enc A -> A := fun A q c => decrypt A c` in domain.lang. It
+  is law-only by its modifier (a plain domain def gets no law-only flag, so
+  a plain `def open` leaks decrypt to guest callers). The laws in
+  examples/open.lang (program): lawOpen `open q c = decrypt c` and
+  lawQuorum `open q c = open p c` by refl, lawTally (open of encOp2 is the
+  sum) by the lawOp2 proof. A guest misuse gives REFUSE_LAW by the S5 walk:
+  no checker edit. RECOMMENDED. (b) as (a) plus a validity witness `QuorumOk
+  q` (t <= n, t >= 1) as an argument of open. (c) a program-visible open on
+  a sealed Quorum with no guest constructor. RULED: (a).
+- Q-S6-3 (S6, O11): the host layout. (a) new src/front/threshold.{c,h} on
+  elgamal.c; elgamal.c exports the BSGS as `elg_log(m, point, bits)` and
+  elg_decrypt calls it (a refactor: the S5 rows do not change);
+  test/thresholdtool.c prints "threshold regressions: passed". RECOMMENDED.
+  (b) all of it in elgamal.c. (c) threshold.c with a copy of the BSGS (no
+  S5 file changes). RULED: (a).
+- Q-S6-4 (S6, O11): shares and DLEQ. (a) a trusted dealer in the host
+  (the DKG is a VALIDATION assumption): Shamir over Fr with keccak
+  coefficients (tag "shamir", with fresh private dealer entropy as required
+  by S6 review), x_i = i, PK_i = s_i G; D_i =
+  s_i C1; a Chaum-Pedersen proof (A, B, z) with w = keccak(nonce tag, s_i,
+  C1) mod r (one w per share and ciphertext), e = the hash chain of the
+  guest `hash` over DLEQ_TAG, PK_i, C1, D_i, A, B (a raw word, no
+  reduction), z = w + (e mod r) s_i; verify z G = A + e PK_i and z C1 = B +
+  e D_i; refuse k < t, an index 0, above n or repeated (fe_inv(0) = 0
+  gives a wrong sum without an error), an off-curve point. RECOMMENDED. (b)
+  the compact proof (e, z): two words, but the chain needs a negation p - y
+  (u256Sub), wrong at the point at infinity. (c) e reduced mod r (the guest
+  has no mod on words, so the chain cannot verify). RULED: (a).
+- Q-S6-5 (S6): the decrypt bound. (a) every S6 row at bits 16 (about 2.9 s
+  per BSGS, about 20 s for thresholdtool); the Jacobian walk with a batch
+  inverse becomes an open item in section 10. RECOMMENDED. (b) the Jacobian
+  walk and batch inverse in S6 (new code, new rows and a new timing table).
+  RULED: (a).
+- Q-S6-6 (S6, O16): the chain rows. (a) examples/threshold.lang (kit, as
+  word literals are kit items) with the views dleqOk (4 ecMul, 2 ecAdd, 10
+  hash), combineX and combineY (t = 2), openOk (C2 = m G + K); precompile.sh
+  deploys it after precompile.lang (+6 steps); every constant from
+  `build/thresholdtool words`, confirmed by a direct `evm run` to 0x06 or
+  0x07 before it enters the file; 4 eval rows of closed copies; the gas
+  (EIP-1108: ecMul 6000, ecAdd 150; about 69,440 for an opening with t = 2)
+  is a VALIDATION table, not a measured row. RECOMMENDED. (b) as (a) plus a
+  measured gas row (new code in test/evmchain.sh). (c) no chain rows in S6.
+  RULED: (a).
+- Q-S6-7 (S6, O16): the Lagrange coefficients on chain. (a) the opener
+  gives lambda_i as view arguments and S6 does not check them on chain
+  (the guest has no mulmod); soundness rests on the DLEQ proofs and the
+  representation problem under DL (a VALIDATION note); the check comes with
+  a word mulmod in S10. RECOMMENDED. (b) the coefficients of one fixed
+  index set as contract constants (only that quorum opens on chain).
+  RULED: (a).

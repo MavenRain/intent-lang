@@ -90,7 +90,17 @@ the codomain is a `Path` or a `Trunc1`. Else the checker gives
 `REFUSE_LAW`. Kit mode records the law-only flag and does not refuse. A
 state field of type `Enc A` gives `REFUSE_STATE`. The host model is
 exponential ElGamal over BN254 G1 (`src/front/elgamal.c`, not guest
-visible).
+visible). The domain also declares `family Quorum := quorum (quorumT :
+Size) (quorumN : Size)` (S6), the public part of a threshold opening (t
+of n). Quorum is not sealed and has no parameter. The law def `open : (A
+: Type 0) -> Quorum -> Enc A -> A` is `decrypt` for each quorum. A guest
+use of `open` outside a law type gives `REFUSE_LAW`, as `decrypt` does. A
+state field of type `Quorum` gives `REFUSE_STATE`. The shares, the partial
+decryptions and their DLEQ proofs are host data (`src/front/threshold.c`).
+The dealer requires fresh private seed entropy for its polynomial
+coefficients; public coefficients expose sk from one share.
+The chain checks one proof and the opening with `ecMul`, `ecAdd` and
+`hash` (`examples/threshold.lang`).
 A domain family can have an index telescope after its
 parameters: `family ChoiceBag : Size -> Type 0 := ...`, a Pi
 telescope that ends in `Type 0`. Each constructor of an indexed family

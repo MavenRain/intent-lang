@@ -145,6 +145,10 @@ law def decrypt : (A : Type 0) -> Enc A -> A :=
   fun (A : Type 0) (c : Enc A) => fold (fun (a : A) => a) c
 law def observe : (A : Type 0) -> Enc A -> Trunc1 A :=
   fun (A : Type 0) (c : Enc A) => trunc1 A (decrypt A c)
+-- Quorum (S6, rule O7): the public part of a threshold opening, t of n.
+family Quorum := quorum (quorumT : Size) (quorumN : Size)
+law def open : (A : Type 0) -> Quorum -> Enc A -> A :=
+  fun (A : Type 0) (q : Quorum) (c : Enc A) => decrypt A c
 -- The positions of a bag (S7 B3, Q4): Pos n has n values, the first
 -- position at each szS and a lift of each position of the tail. No
 -- constructor gives Pos sz0. A domain family, so Fin stays internal (O23).

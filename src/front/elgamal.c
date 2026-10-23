@@ -112,21 +112,17 @@ static int probe(uint64_t *m, const Slot *table, uint32_t mask, const G1 *q, con
   return 0;
 }
 
-ElgResult elg_decrypt(uint64_t *m, const U256 *sk, const ElgCipher *ct, uint32_t bits) {
+ElgResult elg_log(uint64_t *m, const G1 *point, uint32_t bits) {
   uint32_t n;
   uint32_t giants;
   uint32_t mask;
   uint32_t i;
   Slot *table;
-  G1 point;
   G1 baby;
   G1 stride;
   G1 q;
-  if (bits > ELG_BITS_MAX || !g1_on_curve(&ct->c1) || !g1_on_curve(&ct->c2))
+  if (bits > ELG_BITS_MAX || !g1_on_curve(point))
     return ELG_REFUSED;
-  g1_mul(&point, &ct->c1, sk);
-  g1_neg(&point, &point);
-  g1_add(&point, &ct->c2, &point);
   n = 1u << ((bits + 1u) / 2u);
   giants = 1u << (bits / 2u);
   mask = 2u * n - 1u;
@@ -145,9 +141,9 @@ ElgResult elg_decrypt(uint64_t *m, const U256 *sk, const ElgCipher *ct, uint32_t
   }
   /* BABY is n G here, so each giant step adds minus n G. */
   g1_neg(&stride, &baby);
-  q = point;
+  q = *point;
   for (i = 0; i < giants; i++) {
-    if (probe(m, table, mask, &q, &point, (uint64_t)i * n)) {
+    if (probe(m, table, mask, &q, point, (uint64_t)i * n)) {
       free(table);
       return ELG_FOUND;
     }
@@ -155,4 +151,14 @@ ElgResult elg_decrypt(uint64_t *m, const U256 *sk, const ElgCipher *ct, uint32_t
   }
   free(table);
   return ELG_NOT_FOUND;
+}
+
+ElgResult elg_decrypt(uint64_t *m, const U256 *sk, const ElgCipher *ct, uint32_t bits) {
+  G1 point;
+  if (bits > ELG_BITS_MAX || !g1_on_curve(&ct->c1) || !g1_on_curve(&ct->c2))
+    return ELG_REFUSED;
+  g1_mul(&point, &ct->c1, sk);
+  g1_neg(&point, &point);
+  g1_add(&point, &ct->c2, &point);
+  return elg_log(m, &point, bits);
 }

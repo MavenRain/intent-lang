@@ -266,6 +266,57 @@ The 2^20-step search (bits 40, 2^21 steps) was not run; the extrapolation
 is 64 x 183.8 s, about 11,800 s (3.3 h). Its table is 2^21 slots of 8
 bytes (16 MB). A Jacobian walk with a batch inverse can make it faster.
 
+The S6 threshold opening (rule O7) adds `Quorum` and the law def `open`
+(domain/domain.lang), the host opening (src/front/threshold.c), 2
+examples, 6 eval rows, 2 check refusals, 3 fronttool rows, 15
+thresholdtool rows and 6 precompile steps.
+
+Assumptions. The dealer is trusted: the host deals the Shamir shares of sk
+with keccak coefficients under the tag "shamir", derived from fresh
+private 256-bit dealer entropy independent of sk. The caller supplies
+this seed to thr_deal and must keep it private from shareholders and
+use a new seed for every deal. Public coefficients let one shareholder
+subtract the nonconstant polynomial terms and recover sk. Fixed seeds
+in test/thresholdtool.c are reproducible test vectors only. A DKG is open
+item O30.
+The DLEQ proof is a Chaum-Pedersen proof in the random oracle model. Its
+challenge e is the keccak chain from the tag "dleq" over PK_i, C1, D_i, A
+and B as a raw word (the guest `hash`), so the chain verifies the same
+proof. The chain takes the Lagrange coefficients as hints and does not
+check them (O31). Each D_i has a DLEQ proof, and a k-term combination
+equal to a chosen C2 - m G is the representation problem, which is hard
+under DL on G1.
+
+The nonce. w is the keccak chain from the tag "dleqw" over s_i, C1.x and
+C1.y, mod r: one w for each share and ciphertext. A w from the index only
+still verifies, but two proofs with one w and two challenges give s_i. No
+row tests the nonce rule.
+
+Gas, from the source count (EIP-1108 prices, warm precompile calls at 100
+each, SHA3 at 30 + 6 per word). The harness does not measure gas, and the
+lowered code was not counted.
+
+| part | ecMul | ecAdd | calls | SHA3 | gas |
+| --- | --- | --- | --- | --- | --- |
+| one DLEQ verify | 4 x 6000 | 2 x 150 | 6 x 100 | 10 x 42 | 25,320 |
+| combine, t = 2 | 2 x 6000 | 150 | 3 x 100 | | 12,450 |
+| openOk | 6000 | 150 | 2 x 100 | | 6,350 |
+| opening, t = 2 | | | | | 69,440 |
+
+One opening costs about 30,600 t + 6,200 gas before the calldata, the
+memory and the 21,000 base.
+
+The original 13 threshold rows took 24.3 s wall (21.6 s user), with 7
+BSGS at bits 16. Two review rows reject master-key recovery from one
+share using the former public coefficient and check that fresh dealer
+entropy changes the shares without changing the master public key.
+
+The S6 build killed t1 to t4, g1 and c1 (6 of 6), as recorded in
+~/Documents/intent-lang-work/S6-mutants.out. The review additionally
+reproduced master-key recovery on the original public-coefficient dealer:
+the new C regression failed with `FAIL threshold one share recovers master
+key` before the private-seed fix.
+
 ## Ring sizes and gas of the written contract (S9 B3)
 
 `test/contract/ringN.lang` is a guest program with every DAO slot, N

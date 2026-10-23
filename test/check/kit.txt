@@ -90,3 +90,4 @@ glue-binder.lang
 elim-path-case.lang
 cofamily-state.lang
 enc-state.lang
+quorum-state.lang
