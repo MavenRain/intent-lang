@@ -170,3 +170,5 @@ oneuse-key-wrong.lang PATH_END
 oneuse-nomark-wrong.lang PATH_END
 perm-member0-wrong.lang PATH_END
 guest-list.lang REFUSE_CELL
+cofamily-guest.lang REFUSE_DATA
+cofamily-state.lang REFUSE_STATE

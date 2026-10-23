@@ -57,6 +57,12 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
 - Q-S3-4 (a): the test rows with the cell shape stay; each other row gets a
   family with the cell shape that tests the same rule; one REFUSE_CELL row
   for each refused shape.
+- Q-S4-1 .. Q-S4-6 (a), USER 2026-10-22: "just record all of the recommended
+  rulings". A `cofamily` declaration in `domain/domain.lang`, elaborated to
+  its position encoding; a field `D A -> F (D A)` is REFUSE_CELL (O28); one
+  observation, other fields `D A` or `E -> D A` with E closed data; the
+  clause name is the corecursor and `DBisim` is generated; Stream only; no
+  EVM lowering.
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -98,7 +104,7 @@ A type constructor is a declaration with a type parameter, or any map
 | Class | Definition | Structure from the kernel | Examples |
 |---|---|---|---|
 | CM, cell monad | The free algebra monad of a cell signature. The type parameter `A` occurs in one constructor only, the generator `eta : A -> T A`. Each other constructor (a point, path or higher cell) takes closed base data and arguments of type `T A` only. | unit = `eta`; bind = the recursor; the three laws are paths by the induction principle | `Option` (one 0-cell), `Either E` (E 0-cells), the free monoid (`List`), the free commutative monoid (`Bag`, a QIT), `‖-‖` (propositional truncation: one 1-cell `squash`), `‖-‖_0`, the quotient `X / act` of the DAO, the identity monad |
-| CC, cocell comonad | The cofree coalgebra comonad of a cocell signature: a coinductive record with one observation `eps : D A -> A`; each other field has type `D A -> D A` or `D A -> F (D A)` for a fixed CM `F`. | counit = `eps`; extend = the corecursor; the laws are paths by coinduction | `Stream`, `Cofree F` |
+| CC, cocell comonad | The cofree coalgebra comonad of a cocell signature: a coinductive record with one observation `eps : D A -> A`; each other field has type `D A -> D A` or `D A -> E -> D A` with `E` closed data (Q-S4-2 (a); `D A -> F (D A)` waits for O28). | counit = `eps`; extend = the corecursor; the laws are paths by coinduction | `Stream` (`Cofree F`: O28) |
 
 Why the two adjectives in R1 matter:
 
@@ -347,7 +353,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S1 | USER rulings on the questions of section 11; record them in this plan | DONE |
 | S2 | Kernel port from orbit-lang 2162fb2 (section 6); the gate counts of orbit-lang | DONE: `make -B check` EXIT 0 with the orbit-lang counts: 41 examples, 19 parse, 171 check and 22 kit-only refusals, 159 evals, 2 proves, contracts 2 written and 5 refused, rings 6 built and 2 refused, 28 guest and 14 host differential rows, 5 runs, 10 run refusals, 8 asmtool, 3 builds, 16 lower refusals, 33 build checks, 20 dispatch, 43 evm steps, 14 precompile rows and 128 steps, 13 mock rows, 15 diff rows, 24 emit regressions, 0 failures |
 | S3 | R1 narrowing: `REFUSE_CELL`, kernel-derived unit and bind (counit and extend), the free monoid in place of the cons list, the former matrix rewritten as CM and CC rows | DONE: `make -B check` EXIT 0 with the S2 counts, except 42 examples (+1, `examples/freemon.lang`) and 172 check refusals (+1, `test/check/guest-list.lang`); `test/fronttool.c` has 12 new REFUSE_CELL rows, 3 new accepted cell cases and 8 changed rows (no counter); the original mutant (cell checks and guest List refusal off) fails the original 5 rows and guest-list.lang; FORMERS.md section 5 has the CM row and a CC row (S4); O18 to O27 |
-| S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | PLANNED |
+| S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | DONE (Q-S4-1 .. Q-S4-6 (a)): `cofamily Stream` in domain/domain.lang, the laws in examples/cocell.lang, mutants in docs/VALIDATION.md |
 | S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | PLANNED |
 | S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | PLANNED |
 | S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | PLANNED |
@@ -488,6 +494,10 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   specified in section 2. Ten additional fronttool rows cover these cases
   and distinguish fixed labels from parameter-dependent or wrapped
   recursive fields. Seven new rows fail with the original staged checker.
+- O28 (Q-S4-2): `Cofree F`, a cocell field `D A -> F (D A)` for a CM `F`.
+  Its positions depend on the `F` shape, so the S4 position encoding does
+  not give it. It needs M-types (native codata, or the limit of the finite
+  approximations). S4 refuses the field with REFUSE_CELL.
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -593,3 +603,49 @@ The S3 survey (2026-10-22; `~/Documents/intent-lang-work/S3-design-A-check.md`,
   becomes a family of the front.c splice. The parity quotient of
   `examples/quot.lang` and `examples/elim.lang` gets the carrier (a) Size;
   Nat stays internal. RECOMMENDED. (b) Nat. RULED: (a).
+S4 adds these questions (survey `~/Documents/intent-lang-work/S4-survey.md`).
+All six are RULED (S4 session 1, 2026-10-22): the USER took each
+recommendation (quote in section 1).
+
+- Q-S4-1 (S4, O3): the realization of a cocell comonad. Survey:
+  ~/Documents/intent-lang-work/S4-survey.md; the probe
+  ~/Documents/intent-lang-work/S4-probe.lang checks on the S3 kernel with
+  no change. (a) a `cofamily` declaration (domain.lang only) that the
+  checker elaborates into its position encoding (a closed positions
+  family, `D := fun A => D.pos -> A`, the projections, the corecursor by
+  fold, the coinduction principle `DBisim` by funExt and elim); each
+  generated declaration goes through check_family and check_def, so the
+  only new trusted code is the shape check. RECOMMENDED. (b) native codata
+  (new lazy value kinds, observation reductions, Kan operations and
+  conversion at codata, a coinduction path former). (c) library defs in
+  domain.lang only, no declaration form and no shape check. RULED: (a).
+- Q-S4-2 (S4, O3): the field `D A -> F (D A)` (Cofree F). Its positions
+  depend on the F shape, so the encoding of Q-S4-1 (a) does not give it.
+  (a) S4 refuses it with REFUSE_CELL; the CC row of section 2.2 becomes
+  "each other field has type `D A -> D A` or `D A -> E -> D A`, E closed
+  data"; new open item O28: Cofree F waits for M-types (native codata or
+  the limit of approximations). RECOMMENDED. (b) S4 takes Q-S4-1 (b) for
+  these fields only. RULED: (a).
+- Q-S4-3 (S4, O4): the admitted cocell shape. (a) exactly one parameter,
+  a universe; no index; no `and` block; exactly one field of type the
+  parameter (the observation); each other field `D A` or `E -> D A` with E
+  closed data (the dual of the S3 closed labels, O27); zero other fields
+  is the identity comonad. Each other shape is REFUSE_CELL (list in the
+  survey, section 4). RECOMMENDED. (b) as (a) without the labelled field
+  `E -> D A` (the R1 text only). RULED: (a).
+- Q-S4-4 (S4): syntax and names. (a) `cofamily Stream (A : Type 0) :=
+  sCorec (sHead : A) (sTail : Stream A)`: the clause name is the
+  corecursor, the fields are the observations, the coinduction principle
+  is `StreamBisim` (the name of the type plus `Bisim`, checked by R4), the
+  positions family and its ctors have internal names with a `.` (`Stream.pos`,
+  not an identifier, so a guest cannot use them). extend and duplicate are
+  domain.lang defs from the corecursor. RECOMMENDED. (b) the declaration
+  names the coinduction principle too. RULED: (a).
+- Q-S4-5 (S4, R2): the cofamilies of domain.lang. (a) Stream only, with
+  sExtend and sDuplicate; the binary tree, labelled and identity shapes
+  are fronttool rows only. RECOMMENDED. (b) Stream and a labelled
+  machine (`Moore`, input Size). RULED: (a).
+- Q-S4-6 (S4): the EVM side. (a) no lowering: a cofamily value is a
+  function; a Stream state field is refused (expected REFUSE_STATE, as a
+  FreeMon field, O25) and gets a test/check row. RECOMMENDED. (b) lower a
+  finite prefix of observations. RULED: (a).

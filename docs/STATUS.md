@@ -35,6 +35,16 @@
   aliases are normalized, higher-kinded parameters and type indices are
   refused, and fixed operation labels are admitted (PLAN section 2).
   Open items O18 to O27 (docs/PLAN.md section 10).
+- S4 (cocell comonads, O28): `cofamily D (A : Type n) := c fields` in
+  domain/domain.lang only (a guest `cofamily` gives `REFUSE_DATA`). The
+  shape check (src/front/check.c: cocell_shape, cocell_kind) admits one
+  observation and cofields `D A` or `E -> D A` with closed labels, else
+  `REFUSE_CELL`. check_cofamily elaborates the cofamily to text (choice
+  (ii)): the positions D.pos, `D A := D.pos -> A`, the destructors, the
+  walk D.walk, the corecursor and DBisim, and checks each declaration.
+  The domain has `Stream` with sExtend and sDuplicate. New:
+  examples/cocell.lang (the comonad laws), 5 eval rows,
+  test/check/cofamily-guest.lang and cofamily-state.lang, 27 fronttool rows.
 
 ## Remaining M0 work
 
