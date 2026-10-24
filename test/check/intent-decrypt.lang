@@ -1,0 +1,6 @@
+-- REFUSE_LAW (S8, Q-S8-4 (a), rule O7): the minimum output of an intent is
+-- private. A def that decrypts it outside a ZKProof or Trunc1 argument needs
+-- a Path or Trunc1 codomain, not Size.
+def Intent : Type 0 := Prod (Enc Size) Size
+def minOut : Intent -> Enc Size := fun (i : Intent) => first i
+def peekMin : Intent -> Size := fun (i : Intent) => decrypt Size (minOut i)

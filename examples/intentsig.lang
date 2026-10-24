@@ -1,0 +1,75 @@
+-- The signed intent on the chain (S8 b4, survey section 6, Q-S8-8 (a), O33).
+-- A kit file: the guest intent (examples/intent.lang) has Size words and no
+-- signature words; this file holds the word form that the owner signs.
+-- intentHash is the hash chain from intentTag ("intent") over inTok,
+-- outTok, the ciphertext digest, owner (addrToU256), nonce and start. One
+-- view over all the words would take 23 arguments (env, s, 2 tokens, the
+-- 12 ciphertext words of amtIn, startOut and minOut, the 4 decoyIdx words,
+-- owner, nonce, start), past the 22 of slotOk (Q-S7-8), so cipherDigest
+-- hashes the 16 ciphertext words to one argument. replayKey is (owner,
+-- nonce) only: no r, s or v (O33), so the two signature forms of one
+-- intent give one key. fillAuth is the signedBy logic of precompile.lang
+-- over intentHash. The fixture key D = 0x2b, nonce K = 0x13 and both
+-- signature forms come from `build/secptool sign 2b 13 H` (H = fixHash).
+state State := makeState (fills : Nat)
+
+def init : State := makeState 0
+
+def intentTag : U256 := 0x696e74656e74u
+
+def cipherDigest : (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) -> U256 :=
+  fun (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) =>
+    hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash a1x a1y) a2x) a2y) s1x) s1y) s2x) s2y) m1x) m1y) m2x) m2y) d0) d1) d2) d3
+
+def intentHash : (inTok outTok ct : U256) -> (owner : Addr) -> (nonce start : U256) -> U256 :=
+  fun (inTok outTok ct : U256) (owner : Addr) (nonce start : U256) =>
+    hash (hash (hash (hash (hash (hash intentTag inTok) outTok) ct) (addrToU256 owner)) nonce) start
+
+def replayKey : (owner : Addr) -> (nonce : U256) -> U256 :=
+  fun (owner : Addr) (nonce : U256) => hash (addrToU256 owner) nonce
+
+-- An invalid signature gives the address 0 (R18), so the owner 0 must not match.
+def fillAuth : (h : U256) -> (v : Nat) -> (r w : U256) -> (owner : Addr) -> Flag :=
+  fun (h : U256) (v : Nat) (r w : U256) (owner : Addr) =>
+    flagIf (addrEq owner 0x0000000000000000000000000000000000000000) flagNo (addrEq (ecrecover h v r w) owner)
+
+-- Views: the digest (18 arguments), the hash, the key and the check.
+def digestOf : (env : Env) -> (s : State) -> (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) -> U256 :=
+  fun (env : Env) (s : State) (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) =>
+    cipherDigest a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3
+
+def hashOf : (env : Env) -> (s : State) -> (inTok outTok ct : U256) -> (owner : Addr) -> (nonce start : U256) -> U256 :=
+  fun (env : Env) (s : State) (inTok outTok ct : U256) (owner : Addr) (nonce start : U256) => intentHash inTok outTok ct owner nonce start
+
+def keyOf : (env : Env) -> (s : State) -> (owner : Addr) -> (nonce : U256) -> U256 :=
+  fun (env : Env) (s : State) (owner : Addr) (nonce : U256) => replayKey owner nonce
+
+def authOk : (env : Env) -> (s : State) -> (h : U256) -> (v : Nat) -> (r w : U256) -> (owner : Addr) -> Flag :=
+  fun (env : Env) (s : State) (h : U256) (v : Nat) (r w : U256) (owner : Addr) => fillAuth h v r w owner
+
+-- The fixture intent: tokens 0xa1 and 0xb2, ciphertext words 0x11 .. 0x1c, decoyIdx 3 1 4 1, nonce 7, start 100.
+def fixOwner : Addr := 0xeb3025e7ac2764040384316b33476e048961a71f
+
+def fixDigest : U256 := cipherDigest 0x11u 0x12u 0x13u 0x14u 0x15u 0x16u 0x17u 0x18u 0x19u 0x1au 0x1bu 0x1cu 3u 1u 4u 1u
+
+def fixHash : U256 := intentHash 0xa1u 0xb2u fixDigest fixOwner 7u 100u
+
+def fixKey : U256 := replayKey fixOwner 7u
+
+-- `build/secptool sign 2b 13 H`: the low-s form (v 27) and the high-s form (r, n - s, v 28).
+def sigR : U256 := 0x2b4ea0a797a443d293ef5cff444f4979f06acfebd7e86d277475656138385b6cu
+
+def sigLow : U256 := 0x28efc253e066b232992eb84b04da661868421b472bac51aa2665d6db788c9c8bu
+
+def sigHigh : U256 := 0xd7103dac1f994dcd66d147b4fb2599e6526cc19f839c4e91996c87b157a9a4b6u
+
+-- Closed terms for `langc eval`: both forms authorize (0x01 has no EIP-2 rule) and give one replay key; a wrong owner and the owner 0 do not.
+def authLow : Flag := fillAuth fixHash 27 sigR sigLow fixOwner
+
+def authHigh : Flag := fillAuth fixHash 28 sigR sigHigh fixOwner
+
+def sameKey : Flag := u256Eq fixKey (replayKey (ecrecover fixHash 28 sigR sigHigh) 7u)
+
+def authWrong : Flag := fillAuth fixHash 27 sigR sigLow 0x00000000000000000000000000000000000000aa
+
+def authZero : Flag := fillAuth fixHash 27 sigR 0u 0x0000000000000000000000000000000000000000

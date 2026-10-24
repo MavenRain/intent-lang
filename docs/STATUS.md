@@ -81,6 +81,18 @@
   view signedBy in examples/precompile.lang, 11 eval rows, 2 check
   refusals, 3 fronttool rows, test/sigmatool.c (14 rows),
   test/secptool.c (6 rows) and 9 precompile steps.
+- S8 (Part S, O17): examples/intent.lang has intents with encrypted
+  amounts as guest defs over Size: Prod records (O37), the decay rule
+  without division, `meaning` under ZKProof, `settle` and `settleS` on the
+  opened amounts with the proofs as arguments (O32), the Swap ledger and
+  used set, `cancel`, the laws as refl or path defs, FinOf bundles and the
+  view tuple (O38). The kit examples/intentsig.lang has cipherDigest,
+  intentHash, replayKey (owner, nonce) and fillAuth (the owner 0 is
+  refused). Env is `makeEnv now block caller` in the prelude, in `langc
+  run` (NOW BLOCK CALLER NAME ARGS) and in each test script; K4c refuses
+  `block` until S10. New: examples/blocks.lang, 25 eval rows, 2 check
+  refusals, 1 run, 1 run refusal, 1 lower refusal, 2 fronttool rows and
+  the vector mode of test/secptool.c.
 
 ## Remaining M0 work
 

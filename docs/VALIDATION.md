@@ -383,6 +383,73 @@ step traps), w2 (no e1 >= 1 guard; splitEdge), k1 and k2 (fe_mul without
 blsag, elgamal, threshold and sigma rows stay green: the tests are dead
 for BN254).
 
+## Part S and Env.block (S8)
+
+The S8 build killed 13 of 13 mutants, as recorded in
+~/Documents/intent-lang-work/S8-mutants.out: e1 (make_env puts NOW in the
+block field; test/run/blocks.script), e2 (run_call parses BLOCK as an
+Addr; blocks.script and 14 run rows), e2b (run_call does not read BLOCK;
+the bad BLOCK run refusal `1 x 0x..bb ping`, which e2 does not kill), l1
+(K4c lowers `block` as TIMESTAMP; test/lower/env-block.lang), g1 (sizeMul
+as (a + 1) * b; examples/intent.lang decayStart), g2 (progress without
+the sizeMin cap; progCapped), g3 (settleS reads the used set at (owner,
+nonce + 1); cancelFill), g4 (cancel sets the inTok balance of the owner
+to 0; lawReclaim), g5 (settleS pushes a, not o; fillOwnerOut), s1
+(replayKey over the s word; sameKey), s2 (fillAuth without the owner 0
+guard; authZero), s3 (intentHash without `start`; authLow and the
+confirm script), s4 (cipherDigest without d3; authLow and the confirm
+script). The sizeMul mutants a * (b + 1) and a * (b - 1) are equivalent:
+they add w + t to the two sides of Accept, and no row changes. The survey
+named a replayKey over r, but r is the same word in the two signature
+forms, so that key does not split them; s1 uses s.
+
+High s and replay (O33): precompile 0x01 accepts a high s, so a signer
+has two signatures of one hash. `build/secptool sign D K H` prints the
+low form (s <= n/2) and the high form (r, n - s, the other v) and checks
+that the two forms recover the address. The fixture of
+examples/intentsig.lang is D 0x2b and K 0x13, with the owner
+0xeb3025e7ac2764040384316b33476e048961a71f and fixHash
+0xc39670132f07d56285430eb0e2e43c4e00616a2c662adb2b08f2c3b592078972; the
+low form has v 27, the high form has v 28. The evals authLow and
+authHigh are 1: the two forms authorize. `replayKey owner nonce` has no
+signature word, so the high-s twin gives the same key (sameKey 1), and a
+used set over that key refuses the twin. authWrong (another owner) and
+authZero (the owner 0 with s = 0, where the recovered 0 matches without
+the guard) are 0.
+
+Genesis number: the survey named a mutant of the genesis `number` in
+test/evmchain.sh. S8 has no killer for it, because the prestate has no
+block number. evm 1.14.12 panics on a genesis number more than 0 ("can't
+commit genesis block with number > 0"), so NUMBER is 0 in each step, and
+no program lowers a read of `block` before S10 (PLAN O36).
+
+DEVIATION 1 (PLAN O37): the survey allowed program families, but rule R1
+refuses them in guest and kit mode (REFUSE_DATA). Q-S8-2 (a) keeps the
+domain, so Intent, Quote, Transfer and Swap are Prod aliases with a
+constructor def and one accessor def for each field. The field names and
+types are the ruled ones (Q-S8-3).
+
+DEVIATION 2 (PLAN O38): `view` is not a def. observe is law-only, so a
+def with a Prod codomain that calls observe gives REFUSE_LAW. privacyI
+and privacyB state the view tuple (pub and four observe values) in their
+Path types, and `def View` is the type of the tuple.
+
+b4 FALLBACK (PLAN O39): one view over all the intent words takes 23
+arguments (env, s, inTok, outTok, the 12 ciphertext words of amtIn,
+startOut and minOut, the 4 decoyIdx words, owner, nonce and start), more
+than the 22 of slotOk. Thus `cipherDigest` hashes the 16 ciphertext
+words, and intentHash takes that digest as one argument. The views are
+digestOf (18 arguments), hashOf (8), keyOf (4) and authOk (7).
+`langc --kit build` writes the kit (1697 bytes); test/precompile.sh does
+not deploy it.
+
+The confirm script ~/Documents/intent-lang-work/S8-b4-confirm.sh checks
+the kit values outside langc, with the keccak256 code and the precompile
+0x01 of evm 1.14.12 and Python curve math. It prints 8 ok lines: the
+cipherDigest, intentHash and replayKey chains, the secptool address,
+0x01 on the low form, 0x01 on the high form, the address of D G, and r =
+(K G).x. The gate does not run it; the eval authLow also kills s3 and s4.
+
 ## Ring sizes and gas of the written contract (S9 B3)
 
 `test/contract/ringN.lang` is a guest program with every DAO slot, N

@@ -1,0 +1,4 @@
+-- REFUSE_STATE (S8): an intent holds ciphertexts (Enc has no chain form), so
+-- a state field of the alias type Intent is refused, as a field of Enc Size is.
+def Intent : Type 0 := Prod Size (Enc Size)
+state State := makeState (held : U256) (book : Intent)

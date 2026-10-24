@@ -156,6 +156,36 @@ definition of a prelude name, gives `REFUSE_SIG`. The domain families
 0` (the words of adjacent swaps) give the guest theorem `bagOrbit : (n :
 Size) -> Equiv (OrbitN n) (Bag Choice n)` (`examples/bagorbit.lang`).
 
+Part S (S8): `examples/intent.lang` gives intents with encrypted amounts
+as guest defs over `Size`. Rule R1 refuses a program family, and Q-S8-2
+(a) keeps the domain, so `Intent`, `Quote`, `Transfer` and `Swap` are
+`Prod` aliases with a constructor def and one accessor def for each field
+(DEVIATION 1, PLAN O37). The decay rule has no division: `Accept w t so
+mo o` is `Le (w * so + t * mo) (w * o + t * so)`, so the bound on the
+output o moves from the start output so at t = 0 to the minimum output
+mo at t = w. `progress w st b` is b - st, capped at w. `meaning i w t o`
+is the `ZKProof` of `Accept` on the decrypted start and minimum outputs
+of i. `settle` takes the opened amounts a and o and a `Fill` (two `Opens`
+proofs and the `meaning` proof) as arguments (O32). It gives the move of
+a from the owner to the solver and the move of o from the solver to the
+owner. `settleS` adds the state `Swap`: a `Ledger` of balances and a
+`Used` set of (owner, nonce). A missing proof, a used (owner, nonce) or a
+short balance gives `pair none s`; else `settleS` marks the nonce and
+moves a and o. `cancel` marks the nonce and keeps the ledger. The laws of
+PLAN section 5 are defs with a `refl` proof or a path over the solver
+path (`lawSettle`, `lawMatch`, `lawRevert`, `lawReclaim`). `FinOf n` is a
+chain of `Option` over `Unit` (n + 1 indices), and `Bundle n` is `FinOf n
+-> Intent`. `observe` is law-only, so the view of an intent is the tuple
+in the `Path` types of `privacyI` and `privacyB`, not a def (DEVIATION 2,
+PLAN O38). The kit `examples/intentsig.lang` gives the chain side:
+`cipherDigest` hashes the 16 ciphertext words; `intentHash` hashes a tag,
+the two tokens, that digest, the owner, the nonce and the start (PLAN
+O39); `replayKey` hashes the owner and the nonce and no signature word
+(O33); `fillAuth` refuses the owner 0, else it compares the `ecrecover`
+of the hash with the owner. The prelude has `family Env := makeEnv (now :
+Nat) (block : U256) (caller : Addr)` (O17). `langc run` reads `BLOCK`
+from each script line, and K4c refuses a read of `block` until S10.
+
 ## 3. Type formers
 
 > Write here: only the deviations from the formers. Do not copy the forms.

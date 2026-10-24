@@ -84,6 +84,15 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
   the split modulo 2^256); chain rows in examples/onehot.lang; host
   ecrecover in src/front/secp256k1.{c,h} (a closed ecrecover computes, R17
   amended) and the view signedBy.
+- Q-S8-1 .. Q-S8-9 (a), USER 2026-10-24: "Take all recommendations for
+  rulings." Part S as guest program defs over Size in examples/intent.lang
+  (no domain edit): Intent without the zk field, Quote, Transfer, Outcome;
+  the affine decay check (no division) and meaning as a ZKProof; settle
+  takes its proofs as arguments and computes on the opened a and o; Swap
+  with a ledger and the used (owner, nonce) set; the FinOf bundle (Fin3
+  fallback); the kit replay key hash (owner, nonce) in
+  examples/intentsig.lang; Env as makeEnv now block caller and the call
+  format NOW BLOCK CALLER NAME ARGS... (O17), with examples/blocks.lang.
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -378,7 +387,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | DONE: `make -B check` EXIT 0 with the S4 counts, except 45 examples (+2, `examples/enc.lang`, `examples/enc-ideal.lang`), 182 check refusals (+8: enc-fold, enc-decrypt, enc-leak, enc-annot, enc-proj, enc-relay REFUSE_LAW, enc-state REFUSE_STATE, law-guest REFUSE_DATA), 171 evals (+7) and the new line `elgamal regressions: passed` (`src/front/elgamal.c`, `test/elgamaltool.c`); `test/fronttool.c` has 11 new rows (6 from review); mutants k1 to k6 killed (7 of 7, docs/VALIDATION.md) |
 | S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | DONE: `make -B check` EXIT 0 with the S5 counts, except 47 examples (+2, `examples/open.lang`, `examples/threshold.lang`), 184 check refusals (+2: open-leak REFUSE_LAW, quorum-state REFUSE_STATE), 177 evals (+6), 134 precompile steps (+6) and the new line `threshold regressions: passed` (`src/front/threshold.c`, `test/thresholdtool.c`, 15 rows); `test/fronttool.c` has 3 new rows; `examples/storage.lang` field `open` renamed `isOpen` (R4); mutants t1 to t4, g1, c1 killed (6 of 6, docs/VALIDATION.md) |
 | S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | DONE: `make -B check` EXIT 0 with the S6 counts, except 49 examples (+2, `examples/zkproof.lang`, `examples/onehot.lang`), 186 check refusals (+2: zk-leak REFUSE_LAW, transcript-state REFUSE_STATE), 188 evals (+11), 143 precompile steps (+9) and the new lines `sigma regressions: passed` (`src/front/sigma.c`, `test/sigmatool.c`, 14 rows) and `ecrecover regressions: passed` (`src/front/secp256k1.c`, `test/secptool.c`, 6 rows); `test/fronttool.c` has 3 new rows; `src/front/bn254.c` fe_add and fe_mul keep the top carry (a modulus near 2^256); mutants m1, m2, c1, r1, r1b, r2, s1 to s4, w1, w2, k1, k2 killed (14 of 14, docs/VALIDATION.md) |
-| S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | PLANNED |
+| S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | DONE: `make -B check` EXIT 0 with the S7 counts, except 52 examples (+3, `examples/intent.lang`, `examples/intentsig.lang`, `examples/blocks.lang`), 188 check refusals (+2: intent-decrypt REFUSE_LAW, intent-state REFUSE_STATE), 213 evals (+25), 6 runs (+1, `test/run/blocks.script`), 11 run refusals (+1, a bad BLOCK) and 17 lower refusals (+1, env-block REFUSE_LOWER); `Env` is `makeEnv now block caller` in the prelude, the evaluator and each script and harness (O17); `test/fronttool.c` has 2 new rows; `test/secptool.c` signs a vector in the low and the high form; records are Prod aliases (O37), the view is a tuple (O38), the intent hash takes `cipherDigest` (O39); mutants e1, e2, e2b, l1, g1 to g5, s1 to s4 killed (13 of 13, docs/VALIDATION.md) |
 | S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | PLANNED |
 | S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows | PLANNED |
 | S11 | Mutants and close | PLANNED |
@@ -538,6 +547,31 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   keys must not be the signature words (use the intent hash or a nonce).
 - O34 (S7, Q-S7-7): the ballot ctx is a free word. S9 binds it to the
   bLSAG key image; else a copied ballot verifies under a second key image.
+- O35 (S8, O10): `progress` and `meaning` take the window w as an
+  argument. S9 reads it from `Params` (`window : U256`), so a fill cannot
+  select its window.
+- O36 (S8, b1): NUMBER on the chain. evm 1.14.12 panics on a genesis
+  number more than 0 ("can't commit genesis block with number > 0"), and
+  `evm run` has no flag for the block number. Thus `evm run --prestate`
+  cannot set NUMBER, and the S10 row text "the block number in the
+  prestate" is wrong. S10 needs another route, for example the `evm t8n`
+  env field `currentNumber` or `evm statetest`.
+- O37 (S8, Q-S8-2, DEVIATION 1): rule R1 refuses a program family in
+  guest and kit mode, so Intent, Quote, Transfer and Swap are Prod
+  aliases with a constructor def and one accessor def for each field, not
+  families. The field names and types are the ruled ones (Q-S8-3). A
+  USER question is necessary only if the family form is required; that
+  reopens Q-S8-2 (a).
+- O38 (S8, Q-S8-7, DEVIATION 2): `view` is not a def. `observe` is
+  law-only, so a def with a Prod codomain that calls `observe` gives
+  REFUSE_LAW. privacyI and privacyB state the view tuple (pub and four
+  observe values) in their Path types; `def View` is the type of the
+  tuple.
+- O39 (S8, b4 FALLBACK): one chain view over all the intent words takes
+  23 arguments, more than the 22 of slotOk. Thus `cipherDigest` hashes
+  the 16 ciphertext words, and that digest is one argument of
+  `intentHash`. The views are digestOf (18 arguments), hashOf (8), keyOf
+  (4) and authOk (7).
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -865,3 +899,98 @@ Each has a recommended (a). All nine are RULED (S7 build step 0,
   test/secptool.c "ecrecover regressions: passed"; +2 steps, +2 evals.
   RECOMMENDED. (b) no host recovery (signedBy only). (c) (a) plus a guest
   sealed family `Signed A` and a law def `signer`. RULED: (a).
+
+S8 adds these questions (survey `~/Documents/intent-lang-work/S8-survey.md`).
+Each has a recommended (a). All nine are RULED (S8 kickoff s3,
+2026-10-24; the quote is in section 1).
+
+- Q-S8-1 (S8): the carrier split. (a) examples/intent.lang is a guest
+  program over Size (U256, Addr, Flag, Fin and Env are kit: a guest use is
+  REFUSE_KIT), with `Enc Size` ciphertexts and the laws of section 5 as
+  defs with Path codomains; examples/intentsig.lang (kit) holds the intent
+  hash, the replay key and the fill authorization over words;
+  examples/blocks.lang (kit) holds the O17 row. This is the S7 split
+  (zkproof.lang guest, onehot.lang kit). RECOMMENDED. (b) U256 in the
+  guest: U256 and Addr become guest visible and Part S is one file over
+  words (a checker edit; `u256Sub` saturates and there is no `u256Mul`).
+  (c) all of Part S in kit files (no guest laws: the TCM, atomicity and
+  privacy laws need a guest file). RULED: (a).
+- Q-S8-2 (S8): the placement of the names. (a) Intent, Quote, Transfer,
+  Outcome, Bundle, settle, cancel and the laws are program defs and
+  families in examples/intent.lang; domain/domain.lang does not change.
+  No checker rule needs the names, and domain names give REFUSE_NAME:
+  Outcome is a program def in examples/signature.lang and 5 test/check
+  rows, Bundle in examples/state-aliases.lang, settle in examples/enc.lang
+  and examples/lists.lang. RECOMMENDED. (b) the names in
+  domain/domain.lang, and the clashing program names renamed in those
+  examples and rows. RULED: (a).
+- Q-S8-3 (S8, O6, O8, O32): the records. (a) `family Intent := intent
+  (inTok : Size) (outTok : Size) (amtIn : Enc Size) (startOut : Enc Size)
+  (minOut : Enc Size) (decoyIdx : Enc Size) (owner : Size) (nonce : Size)
+  (start : Size)`, `family Quote := quote (outAmt : Enc Size) (solver :
+  Size)`, `family Transfer := transfer (trToken : Size) (trFrom : Size)
+  (trTo : Size) (trAmount : Size)` and `def Outcome : Type 0 := Option
+  (Prod Transfer Transfer)`. The design field zk leaves Intent (a field
+  type cannot name the earlier fields), so the intent proof is a `settle`
+  argument, as the quote proof is (O32 extended). The window (in blocks,
+  Q5 (a)) is a `settle` argument (S9 reads it from Params). RECOMMENDED.
+  (b) a placeholder field `zk : Unit` in Intent (the record keeps the
+  design shape; the proof is still an argument). RULED: (a).
+- Q-S8-4 (S8, O7): decay and meaning. (a) the affine check over Size with
+  no division: `Accept w t so mo o := Le (w*so + t*mo) (w*o + t*so)`
+  (`sizeMul`, `sizeAdd`, `Le a b := (d : Size) * Path Size (sizeAdd a d)
+  b`), `progress w start b := sizeMin (sizeSub b start) w`, and `meaning i
+  w t o := ZKProof (Accept w t (decrypt Size (startOut i)) (decrypt Size
+  (minOut i)) o)`: decrypt is under ZKProof (the Opens form), so meaning
+  is not law-only. The encrypted sides lhsEnc and rhsEnc by encMap and
+  encOp2, with lawLhs and lawRhs by elim (the auction homomorphism of
+  section 5). RECOMMENDED. (b) a plain meaning on the opened Size values,
+  with decrypt only in law defs (settle cannot tie o to minOut outside a
+  law). (c) no encrypted sides (no lawLhs or lawRhs in S8). RULED: (a).
+- Q-S8-5 (S8, O14, O32): settle. (a) `settle : (i : Intent) -> (q :
+  Quote) -> (w t a o : Size) -> Fill i q w t a o -> Outcome`, with `Fill
+  := Prod (Opens Size (amtIn i) a) (Prod (Opens Size (outAmt q) o)
+  (meaning i w t o))`. The proofs are arguments (O32); settle computes
+  only on the opened a and o (O14: only the settled fill opens) and gives
+  `some (pair (pullIn i (solver q) a) (pushOut i q o))`. RECOMMENDED. (b)
+  settle on the Enc amounts (the transfers stay Enc; a ledger move needs a
+  decrypt, so settle is law-only). RULED: (a).
+- Q-S8-6 (S8): the state laws. (a) `family Swap := swap (ledger : Size ->
+  Size -> Size) (used : Size -> Size -> Sum Unit Unit)` (token to account
+  to balance; owner to nonce). settleS gives `pair none s` on a missing
+  proof, a used (owner, nonce) or a short balance; else it marks the nonce
+  and moves a (inTok, owner to solver) and o (outTok, solver to owner)
+  after one joint balance check. cancel marks the nonce. lawSettle,
+  lawMatch, lawRevert (atomicity) and lawReclaim (`ledger (cancel i s)` is
+  `ledger s`) by refl or cong. RECOMMENDED. (b) used nonces only, no
+  ledger (atomicity and reclaim are statements on Outcome only; no
+  balance evals). RULED: (a).
+- Q-S8-7 (S8, O14): the bundle and privacy. (a) `def FinOf : Size -> Type
+  0 := fun n => fold n (fun r => Option r) Unit` (n + 1 indices) and
+  `Bundle n := FinOf n -> Intent`; b2 probes the fold first, and on a
+  failure falls back to `Fin3 := Option (Option Unit)` and Bundle3.
+  privacyI and privacyB (the view of a bundle is path-equal to the view
+  of a decoy bundle with the same public parts) by squash1 paths and a
+  path lambda. RECOMMENDED. (b) the bundle as `FreeMon Intent` (no index
+  type; privacyB by elim on the list). (c) Fin3 only (no probe). RULED: (a).
+- Q-S8-8 (S8, O33): the replay key. (a) the guest key is (owner, nonce)
+  (`used`); the kit key in examples/intentsig.lang is `hash (addrToU256
+  owner) nonce` (no r, s or v); intentHash is the `hash` chain from
+  intentTag over the intent words; fillAuth is the signedBy logic over
+  intentHash. Eval rows from secptool vectors: the low-s signature
+  authorizes; the high-s form (r, n - s, the other v) also authorizes and
+  gives the same key; a wrong owner gives 0; signer 0 never matches. If
+  the view passes 22 arguments, the hash takes the ciphertext digest as
+  one argument (b4 decides). RECOMMENDED. (b) no signature in S8:
+  intentsig.lang moves to S10. RULED: (a).
+- Q-S8-9 (S8, O17): the call format. (a) the prelude `family Env :=
+  makeEnv (now : Nat) (block : U256) (caller : Addr)` (field order =
+  column order); make_env and run_call read `NOW BLOCK CALLER NAME
+  ARGS...`; every script and harness line migrates with BLOCK = NOW plus
+  `u` (behavior equal; survey section 7 names each file);
+  examples/blocks.lang (kit) with test/run/blocks.script (block differs
+  from NOW) and a run refusal row for a bad BLOCK; a `block` use in lower
+  stays a refusal, pinned by a new lower refusal row that S10 flips
+  (NUMBER). RECOMMENDED. (b) block as the last field of Env (`makeEnv now
+  caller block`): the field order differs from the column order of O17.
+  RULED: (a).

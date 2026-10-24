@@ -1,0 +1,219 @@
+-- Part S intents (S8, Q-S8-1 .. Q-S8-9 (a)). A program cannot declare a
+-- family (rule R1) and the domain does not change (Q-S8-2 (a)), so Intent,
+-- Quote and Transfer are Prod aliases with a constructor def and one
+-- accessor def for each field of Q-S8-3. Amounts are Size (words are kit).
+-- The intent proof and the window are settle arguments, not fields.
+def Intent : Type 0 :=
+  Prod Size (Prod Size (Prod (Enc Size) (Prod (Enc Size) (Prod (Enc Size)
+    (Prod (Enc Size) (Prod Size (Prod Size Size)))))))
+def intent : (inTok outTok : Size) -> (amtIn startOut minOut decoyIdx : Enc Size) -> (owner nonce start : Size) -> Intent :=
+  fun (inTok outTok : Size) (amtIn startOut minOut decoyIdx : Enc Size) (owner nonce start : Size) =>
+  pair inTok (pair outTok (pair amtIn (pair startOut (pair minOut (pair decoyIdx (pair owner (pair nonce start)))))))
+def inTok : Intent -> Size := fun (i : Intent) => first i
+def outTok : Intent -> Size := fun (i : Intent) => first (second i)
+def amtIn : Intent -> Enc Size := fun (i : Intent) => first (second (second i))
+def startOut : Intent -> Enc Size := fun (i : Intent) => first (second (second (second i)))
+def minOut : Intent -> Enc Size := fun (i : Intent) => first (second (second (second (second i))))
+def decoyIdx : Intent -> Enc Size := fun (i : Intent) => first (second (second (second (second (second i)))))
+def owner : Intent -> Size := fun (i : Intent) => first (second (second (second (second (second (second i))))))
+def nonce : Intent -> Size := fun (i : Intent) => first (second (second (second (second (second (second (second i)))))))
+def start : Intent -> Size := fun (i : Intent) => second (second (second (second (second (second (second (second i)))))))
+def Quote : Type 0 := Prod (Enc Size) Size
+def quote : (outAmt : Enc Size) -> (solver : Size) -> Quote :=
+  fun (outAmt : Enc Size) (solver : Size) => pair outAmt solver
+def outAmt : Quote -> Enc Size := fun (q : Quote) => first q
+def solver : Quote -> Size := fun (q : Quote) => second q
+def Transfer : Type 0 := Prod Size (Prod Size (Prod Size Size))
+def transfer : (trToken trFrom trTo trAmount : Size) -> Transfer :=
+  fun (trToken trFrom trTo trAmount : Size) => pair trToken (pair trFrom (pair trTo trAmount))
+def trToken : Transfer -> Size := fun (x : Transfer) => first x
+def trFrom : Transfer -> Size := fun (x : Transfer) => first (second x)
+def trTo : Transfer -> Size := fun (x : Transfer) => first (second (second x))
+def trAmount : Transfer -> Size := fun (x : Transfer) => second (second (second x))
+-- some = Settled: the transfer in (owner to solver) and the transfer out.
+def Outcome : Type 0 := Option (Prod Transfer Transfer)
+-- Size arithmetic. sizeAdd and sizeSub recurse on the second argument,
+-- sizeMul on the first, so sizeAdd n sz0 and sizeMul sz0 m reduce. sizePred is\n-- the domain def.
+def sizeAdd : Size -> Size -> Size :=
+  fun (n : Size) (m : Size) => fold n (fun (r : Size) => szS r) m
+def sizeMul : Size -> Size -> Size :=
+  fun (a : Size) (b : Size) => fold sz0 (fun (r : Size) => sizeAdd r b) a
+def sizeSub : Size -> Size -> Size :=
+  fun (a : Size) (b : Size) => fold a (fun (r : Size) => sizePred r) b
+def sizeMin : Size -> Size -> Size := fun (a : Size) (b : Size) => sizeSub a (sizeSub a b)
+def Le : Size -> Size -> Type 0 := fun (a : Size) (b : Size) => (d : Size) * Path Size (sizeAdd a d) b
+-- Decay (Q-S8-4 (a), PLAN 4.1) with no division: the fill o is accepted at
+-- t blocks of the window w when w*o + t*so >= w*so + t*mo, for so the
+-- start output and mo the minimum output. progress caps t at w.
+def lhs : (w t so o : Size) -> Size := fun (w t so o : Size) => sizeAdd (sizeMul w o) (sizeMul t so)
+def rhs : (w t so mo : Size) -> Size := fun (w t so mo : Size) => sizeAdd (sizeMul w so) (sizeMul t mo)
+def Accept : (w t so mo o : Size) -> Type 0 := fun (w t so mo o : Size) => Le (rhs w t so mo) (lhs w t so o)
+def progress : (w st b : Size) -> Size := fun (w st b : Size) => sizeMin (sizeSub b st) w
+-- meaning is the acceptance as a truncation: decrypt is under ZKProof, so
+-- meaning is not law-only (the Opens form of zkproof.lang).
+def meaning : (i : Intent) -> (w t o : Size) -> Type 0 :=
+  fun (i : Intent) (w t o : Size) => ZKProof (Accept w t (decrypt Size (startOut i)) (decrypt Size (minOut i)) o)
+-- The two sides over ciphertexts (affine, no encBind), and the auction
+-- homomorphism laws (PLAN 5) by elim on the ciphertexts (lawOp2 of enc.lang).
+def lhsEnc : (w t : Size) -> (i : Intent) -> (oc : Enc Size) -> Enc Size :=
+  fun (w t : Size) (i : Intent) (oc : Enc Size) =>
+  encOp2 Size Size Size sizeAdd (encMap Size Size (sizeMul w) oc) (encMap Size Size (sizeMul t) (startOut i))
+def rhsEnc : (w t : Size) -> (i : Intent) -> Enc Size :=
+  fun (w t : Size) (i : Intent) =>
+  encOp2 Size Size Size sizeAdd (encMap Size Size (sizeMul w) (startOut i)) (encMap Size Size (sizeMul t) (minOut i))
+def lawLhs : (w t : Size) -> (i : Intent) -> (oc : Enc Size) ->
+  Path Size (decrypt Size (lhsEnc w t i oc)) (lhs w t (decrypt Size (startOut i)) (decrypt Size oc)) :=
+  fun (w t : Size) (i : Intent) (oc : Enc Size) =>
+  elim (fun (d1 : Enc Size) => Path Size (decrypt Size (lhsEnc w t i d1)) (lhs w t (decrypt Size (startOut i)) (decrypt Size d1)))
+    (fun (a : Size) => elim (fun (d2 : Enc Size) => Path Size (decrypt Size (encOp2 Size Size Size sizeAdd (encMap Size Size (sizeMul w) (encEta Size a)) (encMap Size Size (sizeMul t) d2))) (lhs w t (decrypt Size d2) a))
+      (fun (b : Size) => refl) (startOut i)) oc
+def lawRhs : (w t : Size) -> (i : Intent) ->
+  Path Size (decrypt Size (rhsEnc w t i)) (rhs w t (decrypt Size (startOut i)) (decrypt Size (minOut i))) :=
+  fun (w t : Size) (i : Intent) =>
+  elim (fun (d1 : Enc Size) => Path Size (decrypt Size (encOp2 Size Size Size sizeAdd (encMap Size Size (sizeMul w) d1) (encMap Size Size (sizeMul t) (minOut i)))) (rhs w t (decrypt Size d1) (decrypt Size (minOut i))))
+    (fun (a : Size) => elim (fun (d2 : Enc Size) => Path Size (decrypt Size (encOp2 Size Size Size sizeAdd (encMap Size Size (sizeMul w) (encEta Size a)) (encMap Size Size (sizeMul t) d2))) (rhs w t a (decrypt Size d2)))
+      (fun (b : Size) => refl) (minOut i)) (startOut i)
+-- At t = 0 each side is its window term (refl). At t = w the check is
+-- w*o >= w*mo only by cancellation, so no law: the acceptB rows show it.
+def decayStart : (w so o : Size) -> Path Size (lhs w sz0 so o) (sizeMul w o) :=
+  fun (w so o : Size) => refl
+def decayStartR : (w so mo : Size) -> Path Size (rhs w sz0 so mo) (sizeMul w so) :=
+  fun (w so mo : Size) => refl
+-- The decision for evals: inl unit when a <= b (a - b is sz0).
+def leB : Size -> Size -> Sum Unit Unit :=
+  fun (a : Size) (b : Size) => fold (inl unit) (fun (r : Sum Unit Unit) => inr unit) (sizeSub a b)
+def acceptB : (w t so mo o : Size) -> Sum Unit Unit :=
+  fun (w t so mo o : Size) => leB (rhs w t so mo) (lhs w t so o)
+-- Eval values (w = 4, so = 8, mo = 4): t = 0 accepts 8 and refuses 7,
+-- t = 2 accepts 6 and refuses 5, t = 4 accepts 4 and refuses 3.
+def n2 : Size := szS (szS sz0)
+def n4 : Size := sizeAdd n2 n2
+def n8 : Size := sizeAdd n4 n4
+def progCapped : Size := progress n4 n2 (szS n8)
+def progMid : Size := progress n4 n2 (szS n4)
+def progEarly : Size := progress n4 (szS n4) n2
+def acceptT0 : Sum Unit Unit := acceptB n4 sz0 n8 n4 n8
+def refuseT0 : Sum Unit Unit := acceptB n4 sz0 n8 n4 (sizePred n8)
+def acceptT2 : Sum Unit Unit := acceptB n4 n2 n8 n4 (sizeAdd n4 n2)
+def refuseT2 : Sum Unit Unit := acceptB n4 n2 n8 n4 (szS n4)
+def acceptT4 : Sum Unit Unit := acceptB n4 n4 n8 n4 n4
+def refuseT4 : Sum Unit Unit := acceptB n4 n4 n8 n4 (szS n2)
+-- settle, cancel and the state laws (Q-S8-5, Q-S8-6 (a)). A Ledger maps a
+-- token and an account to a balance; Used marks (owner, nonce) with inl unit.
+-- The proofs are arguments (O32): settle computes on the opened a and o only
+-- (O14), and Opens ties each one to decrypt.
+def Ledger : Type 0 := Size -> Size -> Size
+def Used : Type 0 := Size -> Size -> Sum Unit Unit
+def Swap : Type 0 := Prod Ledger Used
+def swap : Ledger -> Used -> Swap := fun (l : Ledger) (u : Used) => pair l u
+def ledger : Swap -> Ledger := fun (s : Swap) => first s
+def used : Swap -> Used := fun (s : Swap) => second s
+def pullIn : Intent -> Size -> Size -> Transfer :=
+  fun (i : Intent) (sv : Size) (a : Size) => transfer (inTok i) (owner i) sv a
+def pushOut : Intent -> Quote -> Size -> Transfer :=
+  fun (i : Intent) (q : Quote) (o : Size) => transfer (outTok i) (solver q) (owner i) o
+def Opens : Enc Size -> Size -> Type 0 :=
+  fun (c : Enc Size) (m : Size) => ZKProof (Path Size (decrypt Size c) m)
+def Fill : (i : Intent) -> (q : Quote) -> (w t a o : Size) -> Type 0 :=
+  fun (i : Intent) (q : Quote) (w t a o : Size) => Prod (Opens (amtIn i) a) (Prod (Opens (outAmt q) o) (meaning i w t o))
+def settle : (i : Intent) -> (q : Quote) -> (w t a o : Size) -> Fill i q w t a o -> Outcome :=
+  fun (i : Intent) (q : Quote) (w t a o : Size) (f : Fill i q w t a o) => some (pair (pullIn i (solver q) a) (pushOut i q o))
+-- Decisions on Size: inl unit is yes.
+def eqB : Size -> Size -> Sum Unit Unit :=
+  fun (a : Size) (b : Size) => leB (sizeAdd (sizeSub a b) (sizeSub b a)) sz0
+def andB : Sum Unit Unit -> Sum Unit Unit -> Sum Unit Unit :=
+  fun (x : Sum Unit Unit) (y : Sum Unit Unit) => either (fun (u : Unit) => y) (fun (u : Unit) => inr unit) x
+def adjust : Ledger -> (tok acct : Size) -> (Size -> Size) -> Ledger :=
+  fun (l : Ledger) (tok acct : Size) (f : Size -> Size) => fun (tk : Size) (ac : Size) =>
+  either (fun (u : Unit) => f (l tk ac)) (fun (u : Unit) => l tk ac) (andB (eqB tk tok) (eqB ac acct))
+def move : Ledger -> Transfer -> Ledger :=
+  fun (l : Ledger) (x : Transfer) =>
+  adjust (adjust l (trToken x) (trFrom x) (fun (b : Size) => sizeSub b (trAmount x))) (trToken x) (trTo x) (fun (b : Size) => sizeAdd b (trAmount x))
+def mark : Used -> (own n : Size) -> Used :=
+  fun (u : Used) (own n : Size) => fun (o2 : Size) (n2 : Size) =>
+  either (fun (v : Unit) => inl unit) (fun (v : Unit) => u o2 n2) (andB (eqB o2 own) (eqB n2 n))
+-- settleS fails (pair none s) on a missing proof (a host refusal or a chain
+-- revert), a used (owner, nonce) or a balance short of a or o (one joint
+-- check, PLAN 4.2). Else it marks the nonce and moves a and o.
+def settleS : (i : Intent) -> (q : Quote) -> (w t a o : Size) -> Option (Fill i q w t a o) -> Swap -> Prod Outcome Swap :=
+  fun (i : Intent) (q : Quote) (w t a o : Size) (pf : Option (Fill i q w t a o)) (s : Swap) =>
+  option (pair none s)
+    (fun (f : Fill i q w t a o) => either (fun (u : Unit) => pair none s)
+      (fun (u : Unit) => either
+        (fun (v : Unit) => pair (settle i q w t a o f) (swap (move (move (ledger s) (pullIn i (solver q) a)) (pushOut i q o)) (mark (used s) (owner i) (nonce i))))
+        (fun (v : Unit) => pair none s)
+        (andB (leB a (ledger s (inTok i) (owner i))) (leB o (ledger s (outTok i) (solver q)))))
+      (used s (owner i) (nonce i)))
+    pf
+def cancel : Intent -> Swap -> Swap :=
+  fun (i : Intent) (s : Swap) => swap (ledger s) (mark (used s) (owner i) (nonce i))
+-- The laws (PLAN 5), refl or cong. lawMatch: two quotes of one solver give
+-- one outcome for one opened o (the proofs are not read, lawZK).
+def lawSettle : (i : Intent) -> (q : Quote) -> (w t a o : Size) -> (f : Fill i q w t a o) ->
+  Path Outcome (settle i q w t a o f) (some (pair (pullIn i (solver q) a) (pushOut i q o))) :=
+  fun (i : Intent) (q : Quote) (w t a o : Size) (f : Fill i q w t a o) => refl
+def lawMatch : (i : Intent) -> (q r : Quote) -> (w t a o : Size) -> (f : Fill i q w t a o) -> (g : Fill i r w t a o) ->
+  Path Size (solver q) (solver r) -> Path Outcome (settle i q w t a o f) (settle i r w t a o g) :=
+  fun (i : Intent) (q r : Quote) (w t a o : Size) (f : Fill i q w t a o) (g : Fill i r w t a o) (p : Path Size (solver q) (solver r)) =>
+  fun (j : I) => some (pair (pullIn i (p @ j) a) (transfer (outTok i) (p @ j) (owner i) o))
+def lawRevert : (i : Intent) -> (q : Quote) -> (w t a o : Size) -> (s : Swap) ->
+  Path (Prod Outcome Swap) (settleS i q w t a o none s) (pair none s) :=
+  fun (i : Intent) (q : Quote) (w t a o : Size) (s : Swap) => refl
+def lawReclaim : (i : Intent) -> (s : Swap) -> Path Ledger (ledger (cancel i s)) (ledger s) :=
+  fun (i : Intent) (s : Swap) => refl
+-- Bundles and privacy (Q-S8-7 (a)). FinOf n has n + 1 indices (a chain of
+-- Option over Unit, PLAN 3.2). observe is law-only, so the view of an intent
+-- is the tuple in the Path types below, not a def.
+def FinOf : Size -> Type 0 := fun (n : Size) => fold Unit (fun (r : Type 0) => Option r) n
+def Bundle : Size -> Type 0 := fun (n : Size) => FinOf n -> Intent
+def Public : Type 0 := Prod Size (Prod Size (Prod Size (Prod Size Size)))
+def pub : Intent -> Public :=
+  fun (i : Intent) => pair (inTok i) (pair (outTok i) (pair (owner i) (pair (nonce i) (start i))))
+def View : Type 0 := Prod Public (Prod (Trunc1 Size) (Prod (Trunc1 Size) (Prod (Trunc1 Size) (Trunc1 Size))))
+def privacyI : (i j : Intent) -> Path Public (pub i) (pub j) ->
+  Path View
+    (pair (pub i) (pair (observe Size (amtIn i)) (pair (observe Size (startOut i)) (pair (observe Size (minOut i)) (observe Size (decoyIdx i))))))
+    (pair (pub j) (pair (observe Size (amtIn j)) (pair (observe Size (startOut j)) (pair (observe Size (minOut j)) (observe Size (decoyIdx j)))))) :=
+  fun (i j : Intent) (p : Path Public (pub i) (pub j)) => fun (k : I) =>
+  pair (p @ k) (pair (squash1 Size (observe Size (amtIn i)) (observe Size (amtIn j)) k)
+    (pair (squash1 Size (observe Size (startOut i)) (observe Size (startOut j)) k)
+      (pair (squash1 Size (observe Size (minOut i)) (observe Size (minOut j)) k)
+        (squash1 Size (observe Size (decoyIdx i)) (observe Size (decoyIdx j)) k))))
+def privacyB : (n : Size) -> (b c : Bundle n) -> ((k : FinOf n) -> Path Public (pub (b k)) (pub (c k))) ->
+  Path (FinOf n -> View)
+    (fun (k : FinOf n) => pair (pub (b k)) (pair (observe Size (amtIn (b k))) (pair (observe Size (startOut (b k))) (pair (observe Size (minOut (b k))) (observe Size (decoyIdx (b k)))))))
+    (fun (k : FinOf n) => pair (pub (c k)) (pair (observe Size (amtIn (c k))) (pair (observe Size (startOut (c k))) (pair (observe Size (minOut (c k))) (observe Size (decoyIdx (c k))))))) :=
+  fun (n : Size) (b c : Bundle n) (p : (k : FinOf n) -> Path Public (pub (b k)) (pub (c k))) =>
+  fun (j : I) => fun (k : FinOf n) => privacyI (b k) (c k) (p k) @ j
+-- Eval fixtures: token 0 in, token 1 out. The owner (account 1) holds 5 of
+-- token 0, the solver (account 2) holds 8 of token 1. The intent sells 3
+-- (start 8, minimum 4) at window 4 and t = 2; q6 gives 6, q9 gives 9 (more
+-- than the solver holds). The proofs are closed: decrypt of encEta reduces.
+def n1 : Size := szS sz0
+def n3 : Size := szS n2
+def n6 : Size := sizeAdd n4 n2
+def book0 : Ledger :=
+  fun (tk : Size) (ac : Size) => either (fun (u : Unit) => szS n4)
+    (fun (u : Unit) => either (fun (v : Unit) => n8) (fun (v : Unit) => sz0) (andB (eqB tk n1) (eqB ac n2)))
+    (andB (eqB tk sz0) (eqB ac n1))
+def swap0 : Swap := swap book0 (fun (ow : Size) (nn : Size) => inr unit)
+def sell3 : Intent := intent sz0 n1 (encEta Size n3) (encEta Size n8) (encEta Size n4) (encEta Size sz0) n1 sz0 sz0
+def q6 : Quote := quote (encEta Size n6) n2
+def q9 : Quote := quote (encEta Size (szS n8)) n2
+def fill6 : Fill sell3 q6 n4 n2 n3 n6 :=
+  pair (trunc1 (Path Size n3 n3) refl) (pair (trunc1 (Path Size n6 n6) refl) (trunc1 (Accept n4 n2 n8 n4 n6) (pack sz0 refl)))
+def fill9 : Fill sell3 q9 n4 n2 n3 (szS n8) :=
+  pair (trunc1 (Path Size n3 n3) refl) (pair (trunc1 (Path Size (szS n8) (szS n8)) refl)
+    (trunc1 (Accept n4 n2 n8 n4 (szS n8)) (pack (sizeAdd n8 n4) refl)))
+def filled : Swap := second (settleS sell3 q6 n4 n2 n3 n6 (some fill6) swap0)
+def fillOwnerOut : Size := ledger filled n1 n1
+def fillSolverIn : Size := ledger filled sz0 n2
+def fillOwnerIn : Size := ledger filled sz0 n1
+def fillSolverOut : Size := ledger filled n1 n2
+def shortOut : Outcome := first (settleS sell3 q9 n4 n2 n3 (szS n8) (some fill9) swap0)
+def shortLedger : Size := ledger (second (settleS sell3 q9 n4 n2 n3 (szS n8) (some fill9) swap0)) sz0 n1
+def cancelUsed : Sum Unit Unit := used (cancel sell3 swap0) n1 sz0
+def cancelFill : Outcome := first (settleS sell3 q6 n4 n2 n3 n6 (some fill6) (cancel sell3 swap0))
+def refillOut : Outcome := first (settleS sell3 q6 n4 n2 n3 n6 (some fill6) filled)
+def revertLedger : Size := ledger (second (settleS sell3 q6 n4 n2 n3 n6 none swap0)) sz0 n1
+def reclaimLedger : Size := ledger (cancel sell3 swap0) sz0 n1
