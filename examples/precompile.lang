@@ -1,6 +1,6 @@
 -- Precompile views (slice S2, kickoff 1.5): ecAdd (address 6), ecMul (7), ecPairing (8), ecrecover (1), hash (SHA3), natDiv, natMod and addrToU256.
 -- test/precompile.sh deploys this contract and compares each view on the chain with a constant that a direct `evm run` to the precompile gave.
--- The evaluator computes a closed ecAdd or ecMul (S8 B1, examples/bn254.lang): `langc eval examples/precompile.lang twoG` prints the 2 G words. An open curve op, ecPairing and ecrecover stay stuck (R17). hash, natDiv, natMod and addrToU256 compute.
+-- The evaluator computes a closed ecAdd or ecMul (S8 B1, examples/bn254.lang): `langc eval examples/precompile.lang twoG` prints the 2 G words. A closed ecrecover computes (S7 b4). An open curve op or ecrecover and ecPairing stay stuck (R17). hash, natDiv, natMod and addrToU256 compute.
 state State := makeState (sigs : List U256)
 
 def init : State := makeState nil
@@ -63,6 +63,11 @@ def recoverSum : (env : Env) -> (s : State) -> U256 :=
           acc)
       0u (sigs s)
 
+-- signedBy (S7 b4): a is not 0 and ecrecover h v r w = a. An invalid signature gives the address 0 (R18), so the signer 0 must not match.
+def signedBy : (env : Env) -> (s : State) -> (h : U256) -> (v : Nat) -> (r w : U256) -> (a : Addr) -> Flag :=
+  fun (env : Env) (s : State) (h : U256) (v : Nat) (r w : U256) (a : Addr) =>
+    flagIf (addrEq a 0x0000000000000000000000000000000000000000) flagNo (addrEq (ecrecover h v r w) a)
+
 def hashv : (env : Env) -> (s : State) -> (a b : U256) -> U256 :=
   fun (env : Env) (s : State) (a b : U256) => hash a b
 
@@ -81,3 +86,8 @@ def hashZero : U256 := hash 0u 0u
 def twoG : Prod U256 U256 := ecAdd (pair 1u 2u) (pair 1u 2u)
 
 def ownerWord : U256 := addrToU256 0x00000000000000000000000000000000000000aa
+
+-- A closed ecrecover computes in the host (S7 b4, front/secp256k1.c): the CallEcrecover0 address, and the address 0 for s = 0.
+def recoverGood : Addr := ecrecover 0x38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873eu 27 0x38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873eu 0x789d1dd423d25f0772d2748d60f7e4b81bb14d086eba8e8e8efb6dcff8a4ae02u
+
+def recoverBad : Addr := ecrecover 0x38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873eu 27 0x38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873eu 0u

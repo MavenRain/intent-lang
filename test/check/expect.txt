@@ -182,3 +182,5 @@ enc-state.lang REFUSE_STATE
 law-guest.lang REFUSE_DATA
 open-leak.lang REFUSE_LAW
 quorum-state.lang REFUSE_STATE
+zk-leak.lang REFUSE_LAW
+transcript-state.lang REFUSE_STATE

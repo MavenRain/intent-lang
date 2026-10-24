@@ -86,10 +86,12 @@ void fe_from_u64(Fe *out, uint64_t n) {
 }
 
 void fe_add(Fe *out, const Fe *a, const Fe *b, const Modulus *f) {
-  /* a + b < 2m < 2^255, so the sum has no carry out of the top limb. */
+  /* a + b < 2m. A carry out of the top limb (a modulus near 2^256, as the
+     secp256k1 p of S7 b4) means the sum is m or more; the wrapping
+     subtraction is then exact. */
   Fe t = *a;
-  add_limbs(t.w, b->w);
-  if (cmp_limbs(t.w, f->w) >= 0)
+  uint32_t carry = add_limbs(t.w, b->w);
+  if (carry != 0 || cmp_limbs(t.w, f->w) >= 0)
     sub_limbs(t.w, f->w);
   *out = t;
 }
@@ -109,7 +111,8 @@ void fe_neg(Fe *out, const Fe *a, const Modulus *f) {
 
 /* The product of A and B, then the remainder modulo m by shift and subtract,
    from the top bit of the 512-bit product. The remainder stays below m, so
-   2 rem + 1 < 2^255 fits in the limbs. */
+   2 rem + 1 < 2m. For a modulus near 2^256 (secp256k1, S7 b4) the shift can
+   carry out of the top limb (TOP); the wrapping subtraction is then exact. */
 void fe_mul(Fe *out, const Fe *a, const Fe *b, const Modulus *f) {
   uint32_t p[2u * BN_LIMBS];
   Fe rem;
@@ -128,10 +131,11 @@ void fe_mul(Fe *out, const Fe *a, const Fe *b, const Modulus *f) {
   }
   for (i = 2u * BN_LIMBS * 32u; i > 0; i--) {
     uint32_t bit = (p[(i - 1) / 32u] >> ((i - 1) % 32u)) & 1u;
+    uint32_t top = rem.w[BN_LIMBS - 1] >> 31;
     for (j = BN_LIMBS - 1; j > 0; j--)
       rem.w[j] = (rem.w[j] << 1) | (rem.w[j - 1] >> 31);
     rem.w[0] = (rem.w[0] << 1) | bit;
-    if (cmp_limbs(rem.w, f->w) >= 0)
+    if (top != 0 || cmp_limbs(rem.w, f->w) >= 0)
       sub_limbs(rem.w, f->w);
   }
   *out = rem;
@@ -212,20 +216,20 @@ void g1_to_words(U256 *x, U256 *y, const G1 *p) {
 
 /* The point with the slope L through A: x3 = L^2 minus a.x minus b.x,
    y3 = L (a.x minus x3) minus a.y. */
-static void chord(G1 *out, const Fe *l, const G1 *a, const Fe *bx) {
+static void chord(G1 *out, const Fe *l, const G1 *a, const Fe *bx, const Modulus *f) {
   G1 t;
-  fe_mul(&t.x, l, l, &BN254_FP);
-  fe_sub(&t.x, &t.x, &a->x, &BN254_FP);
-  fe_sub(&t.x, &t.x, bx, &BN254_FP);
-  fe_sub(&t.y, &a->x, &t.x, &BN254_FP);
-  fe_mul(&t.y, l, &t.y, &BN254_FP);
-  fe_sub(&t.y, &t.y, &a->y, &BN254_FP);
+  fe_mul(&t.x, l, l, f);
+  fe_sub(&t.x, &t.x, &a->x, f);
+  fe_sub(&t.x, &t.x, bx, f);
+  fe_sub(&t.y, &a->x, &t.x, f);
+  fe_mul(&t.y, l, &t.y, f);
+  fe_sub(&t.y, &t.y, &a->y, f);
   *out = t;
 }
 
 /* L = 3 x^2 / 2 y. A point with y = 0 has order 2, so its double is the
    point at infinity (G1 has none). */
-void g1_double(G1 *out, const G1 *a) {
+void ec0_double(G1 *out, const G1 *a, const Modulus *f) {
   Fe num;
   Fe den;
   Fe three;
@@ -234,17 +238,17 @@ void g1_double(G1 *out, const G1 *a) {
     return;
   }
   fe_from_u64(&three, 3);
-  fe_mul(&num, &a->x, &a->x, &BN254_FP);
-  fe_mul(&num, &num, &three, &BN254_FP);
-  fe_add(&den, &a->y, &a->y, &BN254_FP);
-  fe_inv(&den, &den, &BN254_FP);
-  fe_mul(&num, &num, &den, &BN254_FP);
-  chord(out, &num, a, &a->x);
+  fe_mul(&num, &a->x, &a->x, f);
+  fe_mul(&num, &num, &three, f);
+  fe_add(&den, &a->y, &a->y, f);
+  fe_inv(&den, &den, f);
+  fe_mul(&num, &num, &den, f);
+  chord(out, &num, a, &a->x, f);
 }
 
 /* L = (b.y minus a.y) / (b.x minus a.x). Equal x gives the double, or the
    point at infinity for B = minus A. */
-void g1_add(G1 *out, const G1 *a, const G1 *b) {
+void ec0_add(G1 *out, const G1 *a, const G1 *b, const Modulus *f) {
   Fe num;
   Fe den;
   if (is_infinity(a)) {
@@ -257,16 +261,16 @@ void g1_add(G1 *out, const G1 *a, const G1 *b) {
   }
   if (fe_eq(&a->x, &b->x)) {
     if (fe_eq(&a->y, &b->y))
-      g1_double(out, a);
+      ec0_double(out, a, f);
     else
       infinity(out);
     return;
   }
-  fe_sub(&num, &b->y, &a->y, &BN254_FP);
-  fe_sub(&den, &b->x, &a->x, &BN254_FP);
-  fe_inv(&den, &den, &BN254_FP);
-  fe_mul(&num, &num, &den, &BN254_FP);
-  chord(out, &num, a, &b->x);
+  fe_sub(&num, &b->y, &a->y, f);
+  fe_sub(&den, &b->x, &a->x, f);
+  fe_inv(&den, &den, f);
+  fe_mul(&num, &num, &den, f);
+  chord(out, &num, a, &b->x, f);
 }
 
 /* The scalar mul keeps a Jacobian point (X, Y, Z), the affine point
@@ -280,8 +284,7 @@ typedef struct {
 
 /* S = 4 X Y^2, M = 3 X^2, X3 = M^2 minus 2 S, Y3 = M (S minus X3) minus
    8 Y^4, Z3 = 2 Y Z. */
-static void jac_double(Jac *out, const Jac *a) {
-  const Modulus *f = &BN254_FP;
+static void jac_double(Jac *out, const Jac *a, const Modulus *f) {
   Fe yy;
   Fe s;
   Fe mm;
@@ -316,8 +319,7 @@ static void jac_double(Jac *out, const Jac *a) {
 /* A plus the affine point B. U = b.x Z^2, S = b.y Z^3, H = U minus X,
    R = S minus Y; X3 = R^2 minus H^3 minus 2 X H^2,
    Y3 = R (X H^2 minus X3) minus Y H^3, Z3 = Z H. */
-static void jac_add_affine(Jac *out, const Jac *a, const G1 *b) {
-  const Modulus *f = &BN254_FP;
+static void jac_add_affine(Jac *out, const Jac *a, const G1 *b, const Modulus *f) {
   Fe zz;
   Fe u;
   Fe s;
@@ -345,7 +347,7 @@ static void jac_add_affine(Jac *out, const Jac *a, const G1 *b) {
   fe_sub(&s, &s, &a->y, f);
   if (is_zero(&h)) {
     if (is_zero(&s))
-      jac_double(out, a);
+      jac_double(out, a, f);
     else
       memset(out, 0, sizeof *out);
     return;
@@ -365,7 +367,7 @@ static void jac_add_affine(Jac *out, const Jac *a, const G1 *b) {
   *out = r;
 }
 
-void g1_mul(G1 *out, const G1 *p, const U256 *k) {
+void ec0_mul(G1 *out, const G1 *p, const U256 *k, const Modulus *f) {
   uint32_t e[BN_LIMBS];
   Jac acc;
   Fe zi;
@@ -374,17 +376,29 @@ void g1_mul(G1 *out, const G1 *p, const U256 *k) {
   u256_limbs(e, k);
   memset(&acc, 0, sizeof acc);
   for (i = BN_LIMBS * 32u; i > 0; i--) {
-    jac_double(&acc, &acc);
+    jac_double(&acc, &acc, f);
     if ((e[(i - 1) / 32u] >> ((i - 1) % 32u)) & 1u)
-      jac_add_affine(&acc, &acc, p);
+      jac_add_affine(&acc, &acc, p, f);
   }
   if (is_zero(&acc.z)) {
     infinity(out);
     return;
   }
-  fe_inv(&zi, &acc.z, &BN254_FP);
-  fe_mul(&zi2, &zi, &zi, &BN254_FP);
-  fe_mul(&out->x, &acc.x, &zi2, &BN254_FP);
-  fe_mul(&zi2, &zi2, &zi, &BN254_FP);
-  fe_mul(&out->y, &acc.y, &zi2, &BN254_FP);
+  fe_inv(&zi, &acc.z, f);
+  fe_mul(&zi2, &zi, &zi, f);
+  fe_mul(&out->x, &acc.x, &zi2, f);
+  fe_mul(&zi2, &zi2, &zi, f);
+  fe_mul(&out->y, &acc.y, &zi2, f);
+}
+
+void g1_double(G1 *out, const G1 *a) {
+  ec0_double(out, a, &BN254_FP);
+}
+
+void g1_add(G1 *out, const G1 *a, const G1 *b) {
+  ec0_add(out, a, b, &BN254_FP);
+}
+
+void g1_mul(G1 *out, const G1 *p, const U256 *k) {
+  ec0_mul(out, p, k, &BN254_FP);
 }

@@ -317,6 +317,72 @@ reproduced master-key recovery on the original public-coefficient dealer:
 the new C regression failed with `FAIL threshold one share recovers master
 key` before the private-seed fix.
 
+## Proofs and ecrecover (S7)
+
+The S7 build adds `ZKProof`, `Transcript` and the law def `verified`
+(domain/domain.lang), the host Sigma verifiers (src/front/sigma.c), the
+host ecrecover (src/front/secp256k1.c), 2 examples (examples/zkproof.lang,
+examples/onehot.lang), 2 check refusals (zk-leak REFUSE_LAW,
+transcript-state REFUSE_STATE), 3 fronttool rows, 11 eval rows, 14
+sigmatool rows, 6 secptool rows and 9 precompile steps.
+
+Assumptions. Each Sigma proof is a Fiat-Shamir proof in the random oracle
+model. Its challenge is the keccak chain from a tag over ctx, the slot
+index j, the public key, the ciphertext and the commitments, as a raw word
+(the guest `hash`), so the chain verifies the same proof. ecMul by a raw
+word is ecMul by the word mod r. Special soundness: two accepting
+transcripts with the same commitments and the challenges e, e' give
+e_b != e_b' mod r for some b, unless e - e' = c 2^256 mod r for c in {-1,
+0, 1}. For a fresh oracle e', that has a probability of about 3/r.
+
+The split. A slot proof is sound only when e0 + e1 = e modulo 2^256, the
+split of the host. `u256Add` traps on an overflow, and about one honest
+split in two wraps. Thus splitOk (examples/onehot.lang) uses no add: when
+e0 <= e, it checks e1 = e - e0; else it checks e1 >= 1 and e1 - 1 =
+maxWord - (e0 - e). Each `u256Sub` of a taken branch is exact, so splitOk
+is e0 + e1 = e mod 2^256. The check `u256Sub e e0 = e1` alone is unsound:
+`u256Sub` saturates at 0, so e0 > e with e1 = 0 passes. Branch 1 with the
+challenge e1 = 0 is free (z1 G = A1 holds for any statement), and branch 0
+is simulated with a chosen e0 > e. Both branches are then simulated, and
+an encryption of 2 has a slot proof. The guard e1 >= 1 is necessary for
+the same reason (splitEdge: e = 0, e0 = maxWord, e1 = 0).
+
+The field code. fe_add and fe_mul in src/front/bn254.c assumed m < 2^255
+(no carry out of the top limb). The secp256k1 p is near 2^256, so both
+were wrong for it. S7 keeps the carry of fe_add (`carry != 0`) and the
+shifted-out top bit of fe_mul (`top != 0`). For the BN254 moduli both are
+always 0, so the BN254 results do not change.
+
+Gas, from the source count (EIP-1108 prices, warm precompile calls at 100
+each, ecrecover at 3000, SHA3 at 30 + 6 per word). The harness does not
+measure gas, and the lowered code was not counted. slotOk has no
+`u256Add`; its word ops (u256Le, u256Sub, u256Eq) are not counted.
+
+| part | ecMul | ecAdd | calls | SHA3 | gas |
+| --- | --- | --- | --- | --- | --- |
+| randOk | 5 x 6000 | 3 x 150 | 8 x 100 | 12 x 42 | 31,754 |
+| slotOk | 8 x 6000 | 5 x 150 | 13 x 100 | 16 x 42 | 50,722 |
+| sum of k | | 2 (k - 1) x 150 | 2 (k - 1) x 100 | | 500 (k - 1) |
+| one-hot, k = 2 | | | | | 133,698 |
+| signedBy | | | 1 x 100 + 3000 | | 3,100 |
+
+A one-hot ballot costs about 51,222 k + 31,254 gas before the calldata,
+the memory and the 21,000 base.
+
+The S7 build killed 14 of 14 mutants, as recorded in
+~/Documents/intent-lang-work/S7-mutants.out: m1 (law_uses without the
+ZKProof skip; examples/zkproof.lang, Opens REFUSE_LAW), m2 (`verified` a
+plain def; zk-leak accepted), c1 (slotWith without splitOk; slotForged
+eval and step), r1 and r1b (lift_x parity fixed at odd and at even;
+recoverGood and the secptool go-ethereum vector, high s), r2 (signedBy
+without the zero guard; the s 0 step against the signer 0), s1 to s4 (the
+sigmatool rows rand wrong m, OR forged split, two-hot, rand wrong ctx), w1
+(splitOk as `u256Eq (u256Add e0 e1) e`; splitWrap traps, the splitView
+step traps), w2 (no e1 >= 1 guard; splitEdge), k1 and k2 (fe_mul without
+`top != 0`, fe_add without `carry != 0`; secptool fails, while the
+blsag, elgamal, threshold and sigma rows stay green: the tests are dead
+for BN254).
+
 ## Ring sizes and gas of the written contract (S9 B3)
 
 `test/contract/ringN.lang` is a guest program with every DAO slot, N

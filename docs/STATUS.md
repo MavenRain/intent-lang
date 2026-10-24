@@ -70,6 +70,17 @@
   The dealer requires fresh private seed entropy for its polynomial
   coefficients. Review reproduced master-key recovery from one share
   with the original public coefficients and added two dealer regressions.
+- S7 (proofs, rule O7): domain/domain.lang has `def ZKProof := Trunc1`
+  (the O7 walk skips its argument), `sealed family Transcript` and the law
+  def `verified`. The host Sigma verifiers are src/front/sigma.c: a proof
+  of randomness and a one-hot ballot (OR proofs bound to ctx, the split
+  modulo 2^256). A closed `ecrecover` computes (src/front/secp256k1.c, the
+  0x01 rules, high s accepted). src/front/bn254.c fe_add and fe_mul keep
+  the top carry for a modulus near 2^256. New: examples/zkproof.lang,
+  examples/onehot.lang (kit: randOk, slotOk, splitView, sumX, sumY), the
+  view signedBy in examples/precompile.lang, 11 eval rows, 2 check
+  refusals, 3 fronttool rows, test/sigmatool.c (14 rows),
+  test/secptool.c (6 rows) and 9 precompile steps.
 
 ## Remaining M0 work
 

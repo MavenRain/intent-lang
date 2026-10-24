@@ -76,6 +76,14 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
   and Chaum-Pedersen proofs (A, B, z); every row at bits 16; chain rows in
   examples/threshold.lang; the opener gives lambda_i (no chain check until
   S10).
+- Q-S7-1 .. Q-S7-9 (a), USER 2026-10-23: "Rulings on Q-S7-1..9: all (a)."
+  `def ZKProof` as `Trunc1 W` in `domain/domain.lang` (the O7 walk skips
+  its arguments), `sealed family Transcript` and `law def verified`; guest
+  statements in examples/zkproof.lang; host Sigma proofs in
+  src/front/sigma.{c,h} (a randomness DLEQ, one-hot OR proofs bound to ctx,
+  the split modulo 2^256); chain rows in examples/onehot.lang; host
+  ecrecover in src/front/secp256k1.{c,h} (a closed ecrecover computes, R17
+  amended) and the view signedBy.
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -369,7 +377,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S4 | Cocell comonads: coinductive records with one observation, extend by the corecursor, the laws | DONE (Q-S4-1 .. Q-S4-6 (a)): `cofamily Stream` in domain/domain.lang, the laws in examples/cocell.lang, mutants in docs/VALIDATION.md |
 | S5 | `Enc` and `decrypt` (law-only), the monad morphism laws, `observe` and the privacy paths, the host ElGamal | DONE: `make -B check` EXIT 0 with the S4 counts, except 45 examples (+2, `examples/enc.lang`, `examples/enc-ideal.lang`), 182 check refusals (+8: enc-fold, enc-decrypt, enc-leak, enc-annot, enc-proj, enc-relay REFUSE_LAW, enc-state REFUSE_STATE, law-guest REFUSE_DATA), 171 evals (+7) and the new line `elgamal regressions: passed` (`src/front/elgamal.c`, `test/elgamaltool.c`); `test/fronttool.c` has 11 new rows (6 from review); mutants k1 to k6 killed (7 of 7, docs/VALIDATION.md) |
 | S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | DONE: `make -B check` EXIT 0 with the S5 counts, except 47 examples (+2, `examples/open.lang`, `examples/threshold.lang`), 184 check refusals (+2: open-leak REFUSE_LAW, quorum-state REFUSE_STATE), 177 evals (+6), 134 precompile steps (+6) and the new line `threshold regressions: passed` (`src/front/threshold.c`, `test/thresholdtool.c`, 15 rows); `test/fronttool.c` has 3 new rows; `examples/storage.lang` field `open` renamed `isOpen` (R4); mutants t1 to t4, g1, c1 killed (6 of 6, docs/VALIDATION.md) |
-| S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | PLANNED |
+| S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | DONE: `make -B check` EXIT 0 with the S6 counts, except 49 examples (+2, `examples/zkproof.lang`, `examples/onehot.lang`), 186 check refusals (+2: zk-leak REFUSE_LAW, transcript-state REFUSE_STATE), 188 evals (+11), 143 precompile steps (+9) and the new lines `sigma regressions: passed` (`src/front/sigma.c`, `test/sigmatool.c`, 14 rows) and `ecrecover regressions: passed` (`src/front/secp256k1.c`, `test/secptool.c`, 6 rows); `test/fronttool.c` has 3 new rows; `src/front/bn254.c` fe_add and fe_mul keep the top carry (a modulus near 2^256); mutants m1, m2, c1, r1, r1b, r2, s1 to s4, w1, w2, k1, k2 killed (14 of 14, docs/VALIDATION.md) |
 | S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | PLANNED |
 | S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | PLANNED |
 | S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows | PLANNED |
@@ -521,6 +529,15 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 - O31 (S6, Q-S6-7): the chain takes the Lagrange coefficients as hints and
   does not check them. The check lambda_i prod (x_j - x_i) = prod x_j mod r
   needs a word mulmod (S10, the chain form).
+- O32 (S7, Q-S7-2): `settle` (S8) takes its `ZKProof` as an argument.
+  `verified` is a law def, so a guest def cannot make a proof outside a
+  law type.
+- O33 (S7, Q-S7-9): ECDSA malleability. Precompile 0x01 accepts a high s
+  (no EIP-2 rule), so (r, n - s, the other v: 28 for 27, 27 for 28) is a
+  second signature of the same signer (secptool row `high s`). S8 replay
+  keys must not be the signature words (use the intent hash or a nonce).
+- O34 (S7, Q-S7-7): the ballot ctx is a free word. S9 binds it to the
+  bLSAG key image; else a copied ballot verifies under a second key image.
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -782,3 +799,69 @@ Each has a recommended (a). All seven are RULED (S6 build step 0,
   a word mulmod in S10. RECOMMENDED. (b) the coefficients of one fixed
   index set as contract constants (only that quorum opens on chain).
   RULED: (a).
+
+S7 adds these questions (survey `~/Documents/intent-lang-work/S7-survey.md`).
+Each has a recommended (a). All nine are RULED (S7 build step 0,
+2026-10-23; the quote is in section 1).
+
+- Q-S7-1 (S7, O7): the shape of `ZKProof`. (a) `def ZKProof : Type 0 ->
+  Type 0 := fun (W : Type 0) => Trunc1 W` in domain.lang, and the O7 walk
+  skips the arguments of an application of ZKProof, as it skips Trunc1 (the
+  walk reads the syntax type before normalization, so an alias alone makes
+  a decrypt in W law-only). RECOMMENDED. (b) no new name: guest code writes
+  `Trunc1 W` (no checker edit). (c) a new HIT family ZKProof with its own
+  squash and a family flag for the walk. RULED: (a).
+- Q-S7-2 (S7, O7): `verified`. (a) `sealed family Transcript (W : Type 0) :=
+  transcript (transcriptOf : W)` (the ideal transcript holds its witness, as
+  Enc holds its plaintext) and `law def verified : (W : Type 0) ->
+  Transcript W -> ZKProof W` (trunc1 of the elim, the form of observe). No
+  Option: a failed check is a host refusal or a chain revert. RECOMMENDED.
+  (b) the PLAN row `Transcript -> Option (ZKProof W)` (Option is not a law
+  type, so no guest def can use it). (c) a plain def verified and a second
+  walk skip for the arguments of Transcript. RULED: (a).
+- Q-S7-3 (S7): the guest statements. (a) examples/zkproof.lang: `Opens A c m
+  := ZKProof (Path A (decrypt A c) m)`, `OneHot C ind b := ZKProof ((i : C)
+  * Path (C -> Size) (decrypt (C -> Size) b) (ind i))` (Size for U256, as
+  words are kit), lawZK by squash1, lawVerified by refl, lawOpens by
+  verified. RECOMMENDED. (b) OneHot as k slot statements over `FreeMon (Enc
+  Size)`. (c) no guest statements in S7 (S9). RULED: (a).
+- Q-S7-4 (S7, O11): the host layout. (a) new src/front/sigma.{c,h} on
+  threshold.h and elgamal.h; threshold.c does not change (the S6 vectors
+  stay); test/sigmatool.c prints "sigma regressions: passed" (14 rows).
+  RECOMMENDED. (b) all of it in threshold.c. (c) sigma.c with a generic
+  DLEQ and the S6 proof refactored onto it (S6 vectors byte equal).
+  RULED: (a).
+- Q-S7-5 (S7): the proof of randomness. (a) a DLEQ log_G C1 = log_PK (C2 -
+  m G) for a public m: knowledge of the nonce and of the plaintext; e is the
+  raw chain of `hash` from RAND_TAG over ctx, PK, C1, C2, m, A, B; the
+  nonce comes from the secret; it is also the sum proof of a one-hot ballot
+  (m = 1). RECOMMENDED. (b) a Schnorr proof of r on C1 only. (c) both.
+  RULED: (a).
+- Q-S7-6 (S7, O16): the challenge split of the OR proof. (a) e0 + e1 = e
+  modulo 2^256 (`u256Add`, `u256Eq`); the simulated challenge is a full
+  word; special soundness holds except with probability about 3/r (a
+  VALIDATION note). RECOMMENDED. (b) e0 + e1 = e mod r checked with points
+  (e0 G + e1 G = e G: +18,550 gas per slot). (c) e1 = e - e0 put into the
+  branch 1 equations (+1 ecMul per slot). RULED: (a).
+- Q-S7-7 (S7): the one-hot ballot. (a) k ciphertexts (1 <= k <= 8), one
+  disjunctive Chaum-Pedersen proof per slot (chain from ONEHOT_TAG over
+  ctx, the slot index j, PK, C1, C2, A0, B0, A1, B1), plus Q-S7-5 (a) with
+  m = 1 on the sum; ctx is a word that S9 binds to the bLSAG key image.
+  RECOMMENDED. (b) no ctx (a copied ballot verifies). (c) as (a) with k <=
+  4. RULED: (a).
+- Q-S7-8 (S7, O16): the chain rows. (a) examples/onehot.lang (kit;
+  examples/sigma.lang is the F11 example) with the views randOk (5 ecMul, 3
+  ecAdd, 12 hash), slotOk (8 ecMul, 5 ecAdd, 16 hash, 22 arguments) and
+  sumX, sumY; +6 precompile steps; 5 eval rows; constants from
+  `build/sigmatool words`, each confirmed by a direct `evm run`; the gas is
+  a VALIDATION table (about 51,222 k + 31,254 for a ballot of k).
+  RECOMMENDED. (b) as (a) plus one entry for k = 2 (about 45 arguments).
+  (c) no chain rows in S7. RULED: (a).
+- Q-S7-9 (S7, R17): `ecrecover`. (a) no guest type and no law in S7 (Addr,
+  U256 and ecrecover are kit; the signed Intent of S8 decides); host
+  recovery in new src/front/secp256k1.{c,h} on the generic fe_* of
+  bn254.h, so a closed ecrecover computes in the evaluator (R17 amended);
+  the view signedBy (a signer 0 never matches) in examples/precompile.lang;
+  test/secptool.c "ecrecover regressions: passed"; +2 steps, +2 evals.
+  RECOMMENDED. (b) no host recovery (signedBy only). (c) (a) plus a guest
+  sealed family `Signed A` and a law def `signer`. RULED: (a).

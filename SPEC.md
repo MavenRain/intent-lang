@@ -101,6 +101,28 @@ The dealer requires fresh private seed entropy for its polynomial
 coefficients; public coefficients expose sk from one share.
 The chain checks one proof and the opening with `ecMul`, `ecAdd` and
 `hash` (`examples/threshold.lang`).
+The domain declares `def ZKProof : Type 0 -> Type 0 := fun W => Trunc1
+W` (S7): a proof of W is the truncation of W, and zero knowledge is the
+squash cell. ZKProof is a def, not a family. The O7 walk does not enter
+an application of `ZKProof`, as it does not enter one of `Trunc1`: the
+checked declared type is walked before normalization, where `ZKProof W`
+is still an application of the def. The domain also declares `sealed
+family Transcript (W : Type 0) := transcript (transcriptOf : W)`. In the
+ideal model a transcript holds its witness, as an `Enc` holds its
+plaintext. The law def `verified : (W : Type 0) -> Transcript W ->
+ZKProof W` truncates the witness. A guest use of `verified` outside a law
+type gives `REFUSE_LAW`, as `decrypt` does. A state field of type
+`Transcript W` gives `REFUSE_STATE`. A failed check is a host refusal or
+a chain revert, so the codomain is not an `Option`. The real proofs are
+host data (`src/front/sigma.c`): a proof of randomness (a Chaum-Pedersen
+DLEQ) and a one-hot ballot (one disjunctive proof for each slot, bound to
+a context word ctx, and a proof of randomness for the sum). The chain
+checks them with `ecMul`, `ecAdd` and `hash` (`examples/onehot.lang`).
+Rule R17 (S7): a closed `ecrecover` computes in `langc eval`
+(`src/front/secp256k1.c`) by the rules of precompile 0x01: v is 27 or 28
+and 1 <= r, s < n, else the address 0. A high s is accepted (0x01 has no
+EIP-2 rule). An open `ecrecover` is stuck and lowers to a STATICCALL to
+0x01. A closed `ecAdd` or `ecMul` computes; `ecPairing` stays stuck.
 A domain family can have an index telescope after its
 parameters: `family ChoiceBag : Size -> Type 0 := ...`, a Pi
 telescope that ends in `Type 0`. Each constructor of an indexed family

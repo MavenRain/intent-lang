@@ -67,4 +67,11 @@ void g1_double(G1 *out, const G1 *a);
    works as in 0x07. */
 void g1_mul(G1 *out, const G1 *p, const U256 *k);
 
+/* The same operations on any curve y^2 = x^3 + b over the field F (a = 0;
+   the formulas do not use b), for the secp256k1 of front/secp256k1.c (S7 b4).
+   The g1_* operations are these with F = BN254_FP. */
+void ec0_double(G1 *out, const G1 *a, const Modulus *f);
+void ec0_add(G1 *out, const G1 *a, const G1 *b, const Modulus *f);
+void ec0_mul(G1 *out, const G1 *p, const U256 *k, const Modulus *f);
+
 #endif

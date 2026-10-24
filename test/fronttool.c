@@ -50,7 +50,10 @@ static int law_guest(const char *text, const char *want) {
     "sealed family Enc (A : Type 0) := encEta (encOf : A)\n"
     "law def decrypt : (A : Type 0) -> Enc A -> A := fun A c => fold (fun a => a) c\n"
     "family Quorum := quorum (quorumT : Size) (quorumN : Size)\n"
-    "law def open : (A : Type 0) -> Quorum -> Enc A -> A := fun A q c => decrypt A c\n",
+    "law def open : (A : Type 0) -> Quorum -> Enc A -> A := fun A q c => decrypt A c\n"
+    "def ZKProof : Type 0 -> Type 0 := fun W => Trunc1 W\n"
+    "sealed family Transcript (W : Type 0) := transcript (transcriptOf : W)\n"
+    "law def verified : (W : Type 0) -> Transcript W -> ZKProof W := fun W t => trunc1 W (elim (fun u => W) (fun w => w) t)\n",
     text, ORIGIN_PROGRAM, CHECK_GUEST, want);
 }
 
@@ -563,6 +566,13 @@ int main(void) {
   ok &= law_guest("def settleOpen : (q : Quorum) -> (c : Enc Size) -> Trunc1 (Path Size (open Size q c) sz0) -> Size :=\n"
                   "  fun q c p => sz0", NULL);
   ok &= law_guest("def quorumOf : Quorum -> Size := fun q => quorumT q", NULL);
+  /* ZKProof, Transcript and verified (S7, rule O7): a decrypt in the
+     argument of ZKProof is not law-only, and a program def cannot take the
+     name of the law def verified or of the family Transcript. */
+  ok &= law_guest("def openedZK : (c : Enc Size) -> ZKProof (Path Size (decrypt Size c) sz0) -> Size :=\n"
+                  "  fun c p => sz0", NULL);
+  ok &= law_guest("def verified : Size := sz0", "REFUSE_NAME");
+  ok &= law_guest("def Transcript : Size := sz0", "REFUSE_NAME");
   /* The generated names are R4 names: a bisimulation name, a destructor
      name and a corecursor name that an earlier def holds are refused. */
   ok &= domain("def StrmBisim : Type 1 := Type 0\n"

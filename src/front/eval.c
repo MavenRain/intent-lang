@@ -3,6 +3,7 @@
 #include "front/core.h"
 #include "front/blsag.h"
 #include "front/bn254.h"
+#include "front/secp256k1.h"
 #include "keccak.h"
 
 #include <string.h>
@@ -1389,9 +1390,9 @@ static const Value *addr_to_u256(Machine *m, const Value *const *a, uint32_t n) 
   return word_value(m, a[0]->word);
 }
 
-/* ecrecover and ecPairing (S2, R17): a trap argument gives the trap; else
-   the application is stuck, closed arguments included. The chain test is the
-   differential gate (O5). */
+/* ecPairing (S2, R17) and an open curve op or ecrecover: a trap argument
+   gives the trap; else the application is stuck, closed pairing arguments
+   included. The chain test is the differential gate (O5). */
 static const Value *opaque(Machine *m, Op op, const Value *const *a, uint32_t n) {
   for (uint32_t i = 0; i < n; i++) {
     if (a[i]->kind == VAL_TRAP)
@@ -1428,6 +1429,24 @@ static const Value *ec_op(Machine *m, Op op, const Value *const *a, uint32_t n) 
   }
   g1_to_words(&x, &y, &p);
   return make(m, VAL_OP, OP_PAIR, 0, 2, word_value(m, &x), word_value(m, &y), NULL);
+}
+
+/* ecrecover (S7 b4, USER ruling Q-S7-9, R17): closed arguments compute in
+   the host (front/secp256k1.c) with the 0x01 rules; a v other than 27 or 28,
+   an r or s of 0 or n or more and a failed recovery give the address 0
+   (R18). An open argument keeps the application stuck (opaque), so the
+   lowerer still emits the STATICCALL to 0x01. */
+static const Value *recover(Machine *m, const Value *const *a, uint32_t n) {
+  U256 v;
+  U256 *w;
+  if (a[0]->kind != VAL_WORD || a[1]->kind != VAL_NAT || a[2]->kind != VAL_WORD || a[3]->kind != VAL_WORD)
+    return opaque(m, OP_ECRECOVER, a, n);
+  w = arena_alloc(m->arena, sizeof *w);
+  if (w == NULL)
+    return oom(m);
+  u256_from_u64(&v, a[1]->nat);
+  secp_recover(w, a[0]->word, &v, a[2]->word, a[3]->word);
+  return val_word(m, WORD_ADDR, w);
 }
 
 /* The zk ops (S8 B2a): bLSAG over BN254 G1 in the host (front/blsag.c).
@@ -3573,6 +3592,7 @@ static const Value *reduce_op(Machine *m, Op op, uint32_t inst, uint32_t field, 
   case OP_EC_MUL:
     return ec_op(m, op, a, n);
   case OP_ECRECOVER:
+    return recover(m, a, n);
   case OP_EC_PAIRING:
     return opaque(m, op, a, n);
   case OP_ZK_HP:

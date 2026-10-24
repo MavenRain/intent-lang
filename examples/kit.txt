@@ -31,3 +31,4 @@ zk.lang
 zkcast.lang
 enc-ideal.lang
 threshold.lang
+onehot.lang

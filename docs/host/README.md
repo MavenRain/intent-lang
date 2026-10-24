@@ -297,7 +297,7 @@ Slice S2 of sealed-lang adds eight operations and removes four. `langc eval` kee
 | `natMod` | `Nat -> Nat -> Nat` | The remainder. A divisor 0 traps. |
 | `hash` | `U256 -> U256 -> U256` | KECCAK256 of the two words, packed as 64 bytes. `langc eval` computes it with `src/keccak.c`. |
 | `addrToU256` | `Addr -> U256` | The address as a word (the low 160 bits). The one conversion from `Addr`. |
-| `ecrecover` | `U256 -> Nat -> U256 -> U256 -> Addr` | The signer of the hash from `v`, `r` and `s` (precompile 1). An invalid signature gives the address 0. Stuck in `langc eval`. |
+| `ecrecover` | `U256 -> Nat -> U256 -> U256 -> Addr` | The signer of the hash from `v`, `r` and `s` (precompile 1). An invalid signature gives the address 0. A closed call computes in `langc eval` by the 0x01 rules, high s accepted (S7, `src/front/secp256k1.c`); an open argument is stuck. |
 | `ecAdd` | `Prod U256 U256 -> Prod U256 U256 -> Prod U256 U256` | The sum of two BN254 G1 points (precompile 6). A point that is not on the curve reverts. Closed points compute in `langc eval` (S8 B1, `src/front/bn254.c`); an open argument is stuck. |
 | `ecMul` | `Prod U256 U256 -> U256 -> Prod U256 U256` | The scalar product of a G1 point (precompile 7). Closed points compute in `langc eval` (S8 B1, `src/front/bn254.c`); an open argument is stuck. |
 | `ecPairing` | `List (Prod G1 G2) -> Flag` | `flagYes` when the pairing product is one (precompile 8). G1 is `Prod U256 U256`. G2 is `Prod (Prod U256 U256) (Prod U256 U256)` in the EIP-197 word order (x_im, x_re, y_im, y_re). The list must be a closed `cons` chain at build; an open list gives REFUSE_LOWER. Stuck in `langc eval`. |
