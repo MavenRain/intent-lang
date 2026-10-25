@@ -186,6 +186,40 @@ of the hash with the owner. The prelude has `family Env := makeEnv (now :
 Nat) (block : U256) (caller : Addr)` (O17). `langc run` reads `BLOCK`
 from each script line, and K4c refuses a read of `block` until S10.
 
+Part D (S9): `examples/tally.lang` gives encrypted ballots and the tally
+law as guest defs over `Size`. A `Ballot` is an `Enc Hist`, where `Hist`
+is `Choice -> Size` and `ind v` is the one-hot histogram of the vote v.
+`Ballots n` is `FinOf n -> Ballot`. `tallyEnc n bs` sums the n + 1
+ballots under `Enc` by `encOp2` (elim on the size, with a motive that
+mentions `FinOf`), and `count` is the same sum on plain histograms.
+`lawTallyEnc` (by elim on n) states that `open Hist q (tallyEnc n bs)` is
+the `count` of the decrypted ballots. `lawHist` adds the premise that
+each ballot decrypts to `ind (v k)`: then the opening is `hist n v`, the
+histogram of the votes, so the tally shows no ballot. A guest def that
+opens the tally has a law type (rule O7), so `yesCount` and `noCount`
+have the codomain `Trunc1 Size` and print `trunc1 Size (..)`. `histYes`,
+`histNo`, `passed` and `kept` read the plain histogram `hist n v`, and
+`lawHist` ties the two. `pass` gives yes (inl) when the yes count is more
+than the no count, so a tie fails, and `decide h old new` takes new on a
+pass, else old. `test/check/tally-leak.lang` opens the tally in a def
+with a `Params` codomain (REFUSE_LAW). The link in `examples/intent.lang`
+(PLAN 3.3): `Params` is a `Size` with one field `window` (O10, O37),
+`Market` is `Prod Params Swap`, and `settleM` is `settleS` at `window
+(first m)` (`lawWindow`), so a fill cannot select its window (O35).
+`enact` sets the window. `govern` decides on an opened histogram h with
+an `OpensH (tallyEnc n bs) h` proof (PLAN O42), so it does not open the
+tally itself. The fixture market starts at window 6, where the S8 fill
+is short, and govern sets window 4, where it settles (PLAN O41). The kit
+`examples/ballot.lang` gives the chain views: `ballotCtx` is the hash
+chain from `ballotTag` over the key image and the poll (O34),
+`slotBound` and `sumBound` check the proofs of `onehot.lang` under that
+ctx, `ballotSig` checks the ring signature over `ballotDigest` (the hash
+chain from `digestTag` over the 8 slot ciphertext words), `tallyX` and
+`tallyY` add two slot ciphertext points, and `dleqOk`, `combineX`,
+`combineY` and `openOk` are the opening views of `threshold.lang` on the
+summed slots. These views are
+eval rows and precompile steps only until S10 (PLAN O40).
+
 ## 3. Type formers
 
 > Write here: only the deviations from the formers. Do not copy the forms.

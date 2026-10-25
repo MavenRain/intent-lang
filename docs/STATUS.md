@@ -93,6 +93,18 @@
   `block` until S10. New: examples/blocks.lang, 25 eval rows, 2 check
   refusals, 1 run, 1 run refusal, 1 lower refusal, 2 fronttool rows and
   the vector mode of test/secptool.c.
+- S9 (Part D, O34, O35): examples/tally.lang has the encrypted tally as
+  guest defs over Size: tallyEnc (the encOp2 sum of n ballots), count,
+  hist, lawTallyEnc (by elim on n), lawHist, pass and decide. The link in
+  examples/intent.lang has Market (Params and the Swap), settleM at the
+  window of the market, lawWindow, govern and OpensH (O41, O42). The kit
+  examples/ballot.lang has the views ballotCtx, slotBound, sumBound,
+  ballotDigest, ballotSig, tallyX, tallyY, dleqOk, combineX, combineY and
+  openOk (O40). test/ballottool.c gives the host words and the host
+  results; test/check/tally-leak.lang opens the tally in a def
+  (REFUSE_LAW). New: 18 eval rows (tally 6, intent 3, ballot 9), 1 check
+  refusal, 9 precompile steps, 1 example (ballot.lang; tally.lang is
+  counted at b1) and `ballot regressions`.
 
 ## Remaining M0 work
 

@@ -34,3 +34,4 @@ threshold.lang
 onehot.lang
 blocks.lang
 intentsig.lang
+ballot.lang

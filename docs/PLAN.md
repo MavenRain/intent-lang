@@ -93,6 +93,17 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
   fallback); the kit replay key hash (owner, nonce) in
   examples/intentsig.lang; Env as makeEnv now block caller and the call
   format NOW BLOCK CALLER NAME ARGS... (O17), with examples/blocks.lang.
+- Q-S9-1 .. Q-S9-9 (a), USER 2026-10-24: "take all recommendations for
+  Q-S9-1 .. Q-S9-9." Part D in the guest file examples/tally.lang and the
+  link at the end of examples/intent.lang; `Hist := Choice -> Size`,
+  `Ballot := Enc Hist`, the FinOf ballots (Fin3 fallback) and tallyEnc by
+  elim on n; the guest theorems lawTallyEnc and lawHist; `Params := Size`
+  (window), `Decision := Params`, a tie keeps the old Params, the DAO
+  slot stays `Outcome`; `Market := Prod Params Swap`, so a fill reads its
+  window from the market (O35); ctx is ballotCtx of the key image (O34),
+  the ring signs ballotDigest, the host data is test/ballottool.c; the
+  chain views as eval rows and precompile steps, the cast entry, the
+  tally state and the enact entry are S10 (O40).
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -388,8 +399,8 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S6 | `open`: shares, DLEQ, Lagrange in the exponent, the law `open q c ≡ decrypt c`, host and precompile rows | DONE: `make -B check` EXIT 0 with the S5 counts, except 47 examples (+2, `examples/open.lang`, `examples/threshold.lang`), 184 check refusals (+2: open-leak REFUSE_LAW, quorum-state REFUSE_STATE), 177 evals (+6), 134 precompile steps (+6) and the new line `threshold regressions: passed` (`src/front/threshold.c`, `test/thresholdtool.c`, 15 rows); `test/fronttool.c` has 3 new rows; `examples/storage.lang` field `open` renamed `isOpen` (R4); mutants t1 to t4, g1, c1 killed (6 of 6, docs/VALIDATION.md) |
 | S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | DONE: `make -B check` EXIT 0 with the S6 counts, except 49 examples (+2, `examples/zkproof.lang`, `examples/onehot.lang`), 186 check refusals (+2: zk-leak REFUSE_LAW, transcript-state REFUSE_STATE), 188 evals (+11), 143 precompile steps (+9) and the new lines `sigma regressions: passed` (`src/front/sigma.c`, `test/sigmatool.c`, 14 rows) and `ecrecover regressions: passed` (`src/front/secp256k1.c`, `test/secptool.c`, 6 rows); `test/fronttool.c` has 3 new rows; `src/front/bn254.c` fe_add and fe_mul keep the top carry (a modulus near 2^256); mutants m1, m2, c1, r1, r1b, r2, s1 to s4, w1, w2, k1, k2 killed (14 of 14, docs/VALIDATION.md) |
 | S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | DONE: `make -B check` EXIT 0 with the S7 counts, except 52 examples (+3, `examples/intent.lang`, `examples/intentsig.lang`, `examples/blocks.lang`), 188 check refusals (+2: intent-decrypt REFUSE_LAW, intent-state REFUSE_STATE), 213 evals (+25), 6 runs (+1, `test/run/blocks.script`), 11 run refusals (+1, a bad BLOCK) and 17 lower refusals (+1, env-block REFUSE_LOWER); `Env` is `makeEnv now block caller` in the prelude, the evaluator and each script and harness (O17); `test/fronttool.c` has 2 new rows; `test/secptool.c` signs a vector in the low and the high form; records are Prod aliases (O37), the view is a tuple (O38), the intent hash takes `cipherDigest` (O39); mutants e1, e2, e2b, l1, g1 to g5, s1 to s4 killed (13 of 13, docs/VALIDATION.md) |
-| S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | PLANNED |
-| S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows | PLANNED |
+| S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | DONE (Q-S9-1 .. Q-S9-9 all (a), USER 2026-10-24): `make -B check` EXIT 0 with the S8 counts, except 54 examples (+2, `examples/tally.lang`, `examples/ballot.lang`), 189 check refusals (+1, tally-leak REFUSE_LAW), 231 evals (+18: tally 6, intent 3, ballot 9) and 152 precompile steps (+9, the ballot views); `test/ballottool.c` adds `ballot regressions`; `examples/tally.lang` has tallyEnc, count, hist, lawTallyEnc, lawHist, pass and decide, with no b1 fallback (the FinOf motive probe passed, and lawTallyEnc checks by elim on n); `examples/intent.lang` has Market, settleM, lawWindow, govern and OpensH (O35, O41, O42); the ballot ctx binds the key image (O34); the ballot views are eval rows and precompile steps only (O40); mutants c1, c2, d1, t1, p1, l1, h1 killed (7 of 7, docs/VALIDATION.md) |
+| S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows; the cast entry, the encrypted tally state and the `enact` entry (O40) | PLANNED |
 | S11 | Mutants and close | PLANNED |
 
 ## 10. Open items
@@ -547,9 +558,19 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   keys must not be the signature words (use the intent hash or a nonce).
 - O34 (S7, Q-S7-7): the ballot ctx is a free word. S9 binds it to the
   bLSAG key image; else a copied ballot verifies under a second key image.
+  Closed in S9: ballotCtx in examples/ballot.lang is the hash chain from
+  ballotTag over I.x, I.y and the poll
+  (`hash (hash (hash ballotTag ix) iy) poll`), so the row slotCopied
+  (voter 0's slot proof under voter 1's key image) is 0 on the guest and
+  the EVM.
 - O35 (S8, O10): `progress` and `meaning` take the window w as an
   argument. S9 reads it from `Params` (`window : U256`), so a fill cannot
-  select its window.
+  select its window. Closed in S9: in examples/intent.lang,
+  `Market := Prod Params Swap` (Params is a Size with one field window,
+  O37), settleM reads `window (first m)`, and lawWindow states that
+  settleM is settleS at that window. A window-4 proof at a window-6
+  market is TYPE_MISMATCH (a scratch check in S9 b2), and the mutant l1
+  (settleM reads the new Params) fails the check of lawWindow.
 - O36 (S8, b1): NUMBER on the chain. evm 1.14.12 panics on a genesis
   number more than 0 ("can't commit genesis block with number > 0"), and
   `evm run` has no flag for the block number. Thus `evm run --prestate`
@@ -572,6 +593,26 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   the 16 ciphertext words, and that digest is one argument of
   `intentHash`. The views are digestOf (18 arguments), hashOf (8), keyOf
   (4) and authOk (7).
+- O40 (S9, Q-S9-9): S9 puts the ballot views (ballotCtx, slotBound,
+  sumBound, ballotDigest, ballotSig, tallyX, tallyY and the opening views
+  of threshold.lang) on the chain as eval rows and precompile steps only.
+  S10 (the contract) adds a cast entry that passes one key image to each
+  check, the encrypted tally (the sum of the slot ciphertexts) and the
+  window field in the state, and an `enact` entry that checks the
+  opening before it sets the window.
+- O41 (S9, b2, DEVIATION 1): the window fixture is swapped. `meaning` is
+  `Accept w t so mo o` = w*(so - o) <= t*(so - mo), so a longer window
+  decays slower, and a fill that is short at window 4 is short at window
+  6 too. Thus the survey fixture (a fill short at window 4 settles after
+  govern sets window 6) cannot hold. The market m6 starts at window 6,
+  where fill6 (t 2, o 6, the S8 proof at window 4) is short
+  (6*2 > 2*4); govern sets window 4, and fill6 then settles. windowAfter
+  is 4, not 6.
+- O42 (S9, b2, DEVIATION 2): Opens in examples/intent.lang is at Size
+  (`Enc Size -> Size -> Type 0`, used by Fill). govern takes
+  `OpensH (tallyEnc n bs) h` with `OpensH : Ballot -> Hist -> Type 0`
+  (`ZKProof (Path Hist (decrypt Hist c) h)`) in place of a type-indexed
+  `Opens Hist`. The S8 Opens and Fill do not change.
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -994,3 +1035,84 @@ Each has a recommended (a). All nine are RULED (S8 kickoff s3,
   (NUMBER). RECOMMENDED. (b) block as the last field of Env (`makeEnv now
   caller block`): the field order differs from the column order of O17.
   RULED: (a).
+
+S9 adds these questions (survey `~/Documents/intent-lang-work/S9-survey.md`).
+Each has a recommended (a). All nine are RULED (S9 kickoff s2,
+2026-10-24; the quote is in section 1).
+
+- Q-S9-1 (S9): the placement. (a) Part D is a new guest file
+  examples/tally.lang (Choice, Hist, Ballot, Ballots, tallyEnc, count,
+  hist, the tally laws, pass, decide). The link of 3.3 (Params, Decision,
+  Market, enact, settleM, govern and their laws) goes at the end of
+  examples/intent.lang, because it needs settleS. A file cannot import a
+  file, so intent.lang copies the few tally defs that govern needs.
+  RECOMMENDED. (b) Part D and the link in examples/intent.lang only.
+  (c) Part D and the link in a new examples/govern.lang with a copy of
+  the Part S defs that settleS needs (about 150 lines). RULED: (a).
+- Q-S9-2 (S9): the ballots and the n-ary tally. (a) `Hist := Choice ->
+  Size`, `Ballot := Enc Hist`, `Ballots n := FinOf n -> Ballot`, and
+  `tallyEnc` and `count` by elim on n (the motive mentions FinOf; b1
+  probes it first, with the fallback Fin3 and Ballots3). RECOMMENDED.
+  (b) the ballots as `FreeMon Ballot` with fmFold (needs `isSet (Enc
+  Hist)` and the unit and associativity paths of the encrypted sum). (c)
+  two ballots only (the binary lawTally of S6). RULED: (a).
+- Q-S9-3 (S9, 3.1): the tally law. (a) the guest theorem `lawTallyEnc :
+  (q : Quorum) -> (n : Size) -> (bs : Ballots n) -> Path Hist (open Hist
+  q (tallyEnc n bs)) (count n (fun k => decrypt Hist (bs k)))` by
+  induction (lawOp2H, trans, a path lambda), plus `lawHist`: when each
+  ballot decrypts to the indicator of a vote, the opened tally is the
+  histogram of the votes. Eval rows: 3 ballots (yes, yes, no) give 2 and
+  1. RECOMMENDED. (b) eval rows only. (c) (a) plus a permutation law (the
+  tally does not change when two ballots change places; it needs a
+  commutativity proof of sizeAdd). RULED: (a).
+- Q-S9-4 (S9, O5, 3.3): Params and Decision. (a) `Params := Size` (one
+  field, window, O37), `Decision := Params`, and `decide h old new` is
+  new when the yes count is more than the no count, else old (a tie
+  keeps old). The DAO prelude slot stays `Outcome` (the O5 rename was not
+  done in src/; a Part D decision does not go through a Constitution).
+  RECOMMENDED. (b) the prelude slot `Outcome := Params`, with a proof slot
+  `isSet Size` and a `menu : Params -> Constitution`. (c) `Decision :=
+  Option Params` (none keeps the window). RULED: (a).
+- Q-S9-5 (S9, O35, 3.3): the link. (a) `Market := Prod Params Swap`;
+  `enact` sets the Params; `settleM` takes `Option (Fill i q (window
+  (first m)) t a o)`, so the fill reads the window from the market and
+  cannot select it; `govern` takes the opened histogram h and an `Opens
+  Hist (tallyEnc n bs) h` proof (the O32 pattern; a def that calls `open`
+  outside a law type gives REFUSE_LAW). Laws lawWindow, lawEnact and
+  lawGovern by refl. Eval rows: a fill that is short at window 4 settles
+  after govern sets window 6. RECOMMENDED. (b) settle keeps the window
+  argument w, and a law says w is the window of the market (O35 stays
+  open). (c) no guest link in S9 (S10 only). RULED: (a).
+- Q-S9-6 (S9, O34, O39): the ctx binding. (a) `ballotCtx ix iy := hash
+  (hash (hash ballotTag ix) iy) poll`, computed on the chain from the key
+  image. slotBound and sumBound take (ix, iy), not ctx. The election key
+  PK is a contract constant, so slotBound has 21 arguments (O39).
+  RECOMMENDED. (b) ctx is the nullifier key `hash (hash ix iy) poll` (no
+  new tag; ctx and the nullifier are the same word). (c) ctx stays a
+  calldata word, and a separate view checks ctx = ballotCtx ix iy (a cast
+  must call both). RULED: (a).
+- Q-S9-7 (S9): the message of the ring signature. (a) the second
+  zkVerify word is `ballotDigest`, a hash chain from a digest tag over
+  the 8 ciphertext words of the 2 slots. blsag.c does not change.
+  ballotSig has 16 arguments (ring of 3). RECOMMENDED. (b) a new zk
+  builtin with a ballot message (checker, evaluator and lower edits). (c)
+  sign one slot word only (a changed second slot verifies). RULED: (a).
+- Q-S9-8 (S9, O29, O30): the host data. (a) a new test/ballottool.c on
+  the sigma, bLSAG, threshold and ElGamal APIs: `words` prints the
+  constants of examples/ballot.lang; the election key is the dealer key
+  of thresholdtool (n 3, t 2); voters 0, 1 and 2 of a ring of 3 vote yes,
+  yes and no; rows: the ctx binding, the digest signature, a copy under a
+  second key image fails, the 3-ballot tally opens to (2, 1) at bits 16;
+  output `ballot regressions: passed`. RECOMMENDED. (b) new `words` modes
+  in sigmatool and thresholdtool. (c) one plain ElGamal key (no opening
+  rows on the chain). RULED: (a).
+- Q-S9-9 (S9, S10): the chain scope. (a) S9 adds the views ballotCtx,
+  slotBound, sumBound, ballotDigest, ballotSig, tallyX and tallyY, and
+  the opening views of threshold.lang on the summed slots, as eval rows
+  and precompile steps (+9). A cast entry, the encrypted tally in the
+  state, the window field and an `enact` entry that checks the opening
+  are S10 (the contract), a new O40. RECOMMENDED. (b) (a) plus a kit run
+  row now: examples/params.lang with `state State := makeState (window :
+  U256)` and an `enact` entry that takes the opened counts as words that
+  it does not check. (c) a full cast entry now (more than 22 arguments,
+  so a state of partial checks over several calls). RULED: (a).

@@ -217,3 +217,74 @@ def cancelFill : Outcome := first (settleS sell3 q6 n4 n2 n3 n6 (some fill6) (ca
 def refillOut : Outcome := first (settleS sell3 q6 n4 n2 n3 n6 (some fill6) filled)
 def revertLedger : Size := ledger (second (settleS sell3 q6 n4 n2 n3 n6 none swap0)) sz0 n1
 def reclaimLedger : Size := ledger (cancel sell3 swap0) sz0 n1
+-- Params and the link (S9, PLAN 3.3, Q-S9-4 and Q-S9-5 (a)). The market
+-- holds the Params (one field window, O10, O37) next to the Swap. settleM
+-- reads the window of the market, so a fill cannot select its window (O35).
+-- A Decision is a Params (PLAN 3.3; the prelude slot keeps the name
+-- Outcome, O5), and enact sets it. govern decides on the opened histogram
+-- h, with an OpensH proof that h opens the tally (the O32 pattern), so it
+-- never opens the tally itself. Choice, Hist, Ballot, Ballots, addH, ind,
+-- tallyEnc, Params, pass and decide are copies from examples/tally.lang.
+def Choice : Type 0 := Sum Unit Unit
+def Hist : Type 0 := Choice -> Size
+def Ballot : Type 0 := Enc Hist
+def Ballots : Size -> Type 0 := fun (n : Size) => FinOf n -> Ballot
+def addH : Hist -> Hist -> Hist :=
+  fun (h : Hist) (g : Hist) => fun (c : Choice) => sizeAdd (h c) (g c)
+def ind : Choice -> Choice -> Size :=
+  fun (v : Choice) (c : Choice) =>
+  either (fun (u : Unit) => either (fun (w : Unit) => szS sz0) (fun (w : Unit) => sz0) c)
+    (fun (u : Unit) => either (fun (w : Unit) => sz0) (fun (w : Unit) => szS sz0) c) v
+def tallyEnc : (n : Size) -> Ballots n -> Ballot :=
+  fun (n : Size) => elim (fun (t : Size) => Ballots t -> Ballot)
+    (fun (bs : Ballots sz0) => bs unit)
+    (fun (k : Size) (ih : Ballots k -> Ballot) => fun (bs : Ballots (szS k)) =>
+      encOp2 Hist Hist Hist addH (bs none) (ih (fun (j : FinOf k) => bs (some j)))) n
+def Params : Type 0 := Size
+def pass : Hist -> Sum Unit Unit :=
+  fun (h : Hist) => leB (szS (h (inr unit))) (h (inl unit))
+def decide : Hist -> Params -> Params -> Params :=
+  fun (h : Hist) (old : Params) (new : Params) => either (fun (u : Unit) => new) (fun (u : Unit) => old) (pass h)
+def params : (window : Size) -> Params := fun (window : Size) => window
+def window : Params -> Size := fun (p : Params) => p
+def Decision : Type 0 := Params
+def Market : Type 0 := Prod Params Swap
+def enact : Decision -> Market -> Market :=
+  fun (d : Decision) (m : Market) => pair d (second m)
+def settleM : (i : Intent) -> (q : Quote) -> (t a o : Size) -> (m : Market) ->
+  Option (Fill i q (window (first m)) t a o) -> Prod Outcome Market :=
+  fun (i : Intent) (q : Quote) (t a o : Size) (m : Market) (pf : Option (Fill i q (window (first m)) t a o)) =>
+  pair (first (settleS i q (window (first m)) t a o pf (second m)))
+    (pair (first m) (second (settleS i q (window (first m)) t a o pf (second m))))
+def OpensH : Ballot -> Hist -> Type 0 :=
+  fun (c : Ballot) (h : Hist) => ZKProof (Path Hist (decrypt Hist c) h)
+def govern : (n : Size) -> (bs : Ballots n) -> (h : Hist) -> OpensH (tallyEnc n bs) h ->
+  (new : Params) -> Market -> Market :=
+  fun (n : Size) (bs : Ballots n) (h : Hist) (pf : OpensH (tallyEnc n bs) h) (new : Params) (m : Market) =>
+  enact (decide h (first m) new) m
+-- The link laws, refl: settleM is settleS at the window of the market,
+-- enact sets the window, and a fill after govern reads decide h old new.
+def lawWindow : (i : Intent) -> (q : Quote) -> (t a o : Size) -> (m : Market) -> (pf : Option (Fill i q (window (first m)) t a o)) ->
+  Path Outcome (first (settleM i q t a o m pf)) (first (settleS i q (window (first m)) t a o pf (second m))) :=
+  fun (i : Intent) (q : Quote) (t a o : Size) (m : Market) (pf : Option (Fill i q (window (first m)) t a o)) => refl
+def lawEnact : (d : Decision) -> (m : Market) -> Path Size (window (first (enact d m))) d :=
+  fun (d : Decision) (m : Market) => refl
+def lawGovern : (n : Size) -> (bs : Ballots n) -> (h : Hist) -> (pf : OpensH (tallyEnc n bs) h) -> (new : Params) -> (m : Market) ->
+  Path Size (window (first (govern n bs h pf new m))) (decide h (first m) new) :=
+  fun (n : Size) (bs : Ballots n) (h : Hist) (pf : OpensH (tallyEnc n bs) h) (new : Params) (m : Market) => refl
+-- Eval values: the market starts at window 6, where fill6 (t = 2, o = 6) is
+-- short: a longer window decays slower (w*(so - o) <= t*(so - mo)), so no
+-- proof exists and the caller passes none. Three ballots vote yes, yes and
+-- no; h3 is the opened tally and govern sets window 4, where fill6 settles.
+def yes : Choice := inl unit
+def no : Choice := inr unit
+def votes3 : FinOf n2 -> Choice :=
+  fun (k : FinOf n2) => option yes (fun (j : FinOf n1) => option yes (fun (u : Unit) => no) j) k
+def ballots3 : Ballots n2 := fun (k : FinOf n2) => encEta Hist (ind (votes3 k))
+def h3 : Hist := addH (ind yes) (addH (ind yes) (ind no))
+def opened3 : OpensH (tallyEnc n2 ballots3) h3 := trunc1 (Path Hist h3 h3) refl
+def m6 : Market := pair (params n6) swap0
+def governed : Market := govern n2 ballots3 h3 opened3 (params n4) m6
+def fillBefore : Outcome := first (settleM sell3 q6 n2 n3 n6 m6 none)
+def fillAfter : Outcome := first (settleM sell3 q6 n2 n3 n6 governed (some fill6))
+def windowAfter : Size := window (first governed)

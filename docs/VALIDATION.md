@@ -450,6 +450,52 @@ cipherDigest, intentHash and replayKey chains, the secptool address,
 0x01 on the low form, 0x01 on the high form, the address of D G, and r =
 (K G).x. The gate does not run it; the eval authLow also kills s3 and s4.
 
+## Part D (S9)
+
+The S9 build killed 7 of 7 mutants, as recorded in
+~/Documents/intent-lang-work/S9-mutants.out: c1 (ctxOf drops I.y; the
+ballot rows ctxGood, slotBoundGood, slotBound1Good and sumBoundGood), c2
+(ctxOf drops the key image; the same four rows), d1 (digestOf drops the
+last word v2y; sigGood), t1 (the step of tallyEnc keeps the head ballot
+only; `langc check examples/tally.lang` gives TYPE_MISMATCH at
+lawTallyEnc, and the tally row yesCount fails with it), p1 (pass on a
+tie gives inl: leB without szS; kept is 6, not 4), l1 (settleM reads the
+window from the new Params n4 before enact; `langc check
+examples/intent.lang` gives TYPE_MISMATCH at lawWindow, and the intent
+row fillBefore fails with it), h1 (ballot_ctx of test/ballottool.c
+starts from 0, with no tag; `FAIL ballot ctx binding`, so `ballot
+regressions` fails). The survey named slotCopied as the killer of c1 and
+c2, and sigTampered as the killer of d1. These rows stay 0 under the
+mutants: a ctx without the key image does not match the proofs of the
+fixture, so the good rows fail first, and a digest without v2y does not
+match the signature, so sigGood fails. The ctx mutants and the digest
+mutant are killed by those other rows.
+
+Law types (rule O7): a guest def that opens the tally has a law type, so
+yesCount and noCount have the codomain `Trunc1 Size`, and eval prints
+`trunc1 Size (szS (szS sz0))` and `trunc1 Size (szS sz0)`. histYes (2),
+histNo (1), passed (inl) and kept (4) read the plain histogram `hist n
+v`, and lawHist ties the opening to that histogram.
+test/check/tally-leak.lang (decideOpen, a Params codomain over `open Hist
+q c (inl unit)`) gives REFUSE_LAW. No b1 fallback was necessary: the
+FinOf motive probe passed, and lawTallyEnc checks by elim on n.
+
+The ballot rows. `build/ballottool` deals the election key of
+thresholdtool (n 3, t 2), and voters 0, 1 and 2 of the ring zkKey 0 .. 2
+cast yes, yes and no (k 2, yes is slot 0). Each cast verifies, and the
+rows are: ctx binding (the known answer of ballotCtx for voter 0), digest
+signature, copy under a second key image (SIG_BAD_SLOT), tally yes (the
+quorum {1, 2} opens the slot 0 sum to 2) and tally no (1). With the
+argument `words` it prints the 55 constants of examples/ballot.lang. The
+9 eval rows of examples/ballot.lang are ctxGood 1, slotBoundGood 1,
+slotBound1Good 1, slotCopied 0, sumBoundGood 1, sigGood 1, sigTampered
+0, tallyOpenYes 1 and tallyOpenNo 1. test/precompile.sh deploys the kit
+after onehot.lang and makes 9 calls with the same words: ballotCtx (the
+known answer word), slotBound 3 times (1, 1 and 0 for the copy),
+sumBound, ballotSig 2 times (1, and 0 for a changed slot) and openOk 2
+times (yes 2, no 1). Each result is the host result (precompile 152
+steps, +9).
+
 ## Ring sizes and gas of the written contract (S9 B3)
 
 `test/contract/ringN.lang` is a guest program with every DAO slot, N
