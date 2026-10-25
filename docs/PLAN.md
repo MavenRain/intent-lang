@@ -104,6 +104,26 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
   the ring signs ballotDigest, the host data is test/ballottool.c; the
   chain views as eval rows and precompile steps, the cast entry, the
   tally state and the enact entry are S10 (O40).
+- Q-S10-1 .. Q-S10-10 (a), USER 2026-10-24: "Rulings on Q-S10-1..10: take
+  all recommendations." A step with BLOCK more than 0 runs `evm t8n` (env
+  currentNumber BLOCK, currentTimestamp NOW; CALLER is the key address
+  0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b), a step at BLOCK 0 stays
+  `evm run --prestate` (O36); `IR_ENV_BLOCK` lowers to NUMBER (0x43) and
+  test/lower/env-block.lang leaves the refusal list (O17);
+  examples/dao.lang is a kit file written by hand from the host constants,
+  and src/front/writer.c does not change; one contract for the DAO and the
+  reactor (O15: if the size row is over EIP-170, STOP and ask); the cast
+  is castSig, castSlot and castSeal under the nullifier N = hash (hash ix
+  iy) poll, and a second castSig of a pending N starts N again (O39); 8
+  tally words start at 0 (the ecAdd identity), with `casts` and `castEnd`
+  (castSeal reverts when block is more than castEnd, enact reverts when
+  block is not more than castEnd and a second time); enact opens slot 0
+  with the quorum {1, 2}, no = casts - yes, window := decide proposal
+  window, so O31 becomes "the Lagrange constants are contract constants";
+  the fill is fillCipher, fillAuth, fillOpen, fillSettle and cancel, and
+  the intent and quote randomness proofs stay host rows (a new O row); the
+  host data is `ballottool dao` with `dao regressions`; the chain test is
+  test/dao.sh and test/run/dao.script on the guest and the EVM.
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -400,7 +420,8 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S7 | `ZKProof` as truncation, `verified`, the Sigma-protocol verifiers (randomness, one-hot), `ecrecover` | DONE: `make -B check` EXIT 0 with the S6 counts, except 49 examples (+2, `examples/zkproof.lang`, `examples/onehot.lang`), 186 check refusals (+2: zk-leak REFUSE_LAW, transcript-state REFUSE_STATE), 188 evals (+11), 143 precompile steps (+9) and the new lines `sigma regressions: passed` (`src/front/sigma.c`, `test/sigmatool.c`, 14 rows) and `ecrecover regressions: passed` (`src/front/secp256k1.c`, `test/secptool.c`, 6 rows); `test/fronttool.c` has 3 new rows; `src/front/bn254.c` fe_add and fe_mul keep the top carry (a modulus near 2^256); mutants m1, m2, c1, r1, r1b, r2, s1 to s4, w1, w2, k1, k2 killed (14 of 14, docs/VALIDATION.md) |
 | S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | DONE: `make -B check` EXIT 0 with the S7 counts, except 52 examples (+3, `examples/intent.lang`, `examples/intentsig.lang`, `examples/blocks.lang`), 188 check refusals (+2: intent-decrypt REFUSE_LAW, intent-state REFUSE_STATE), 213 evals (+25), 6 runs (+1, `test/run/blocks.script`), 11 run refusals (+1, a bad BLOCK) and 17 lower refusals (+1, env-block REFUSE_LOWER); `Env` is `makeEnv now block caller` in the prelude, the evaluator and each script and harness (O17); `test/fronttool.c` has 2 new rows; `test/secptool.c` signs a vector in the low and the high form; records are Prod aliases (O37), the view is a tuple (O38), the intent hash takes `cipherDigest` (O39); mutants e1, e2, e2b, l1, g1 to g5, s1 to s4 killed (13 of 13, docs/VALIDATION.md) |
 | S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | DONE (Q-S9-1 .. Q-S9-9 all (a), USER 2026-10-24): `make -B check` EXIT 0 with the S8 counts, except 54 examples (+2, `examples/tally.lang`, `examples/ballot.lang`), 189 check refusals (+1, tally-leak REFUSE_LAW), 231 evals (+18: tally 6, intent 3, ballot 9) and 152 precompile steps (+9, the ballot views); `test/ballottool.c` adds `ballot regressions`; `examples/tally.lang` has tallyEnc, count, hist, lawTallyEnc, lawHist, pass and decide, with no b1 fallback (the FinOf motive probe passed, and lawTallyEnc checks by elim on n); `examples/intent.lang` has Market, settleM, lawWindow, govern and OpensH (O35, O41, O42); the ballot ctx binds the key image (O34); the ballot views are eval rows and precompile steps only (O40); mutants c1, c2, d1, t1, p1, l1, h1 killed (7 of 7, docs/VALIDATION.md) |
-| S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows; the cast entry, the encrypted tally state and the `enact` entry (O40) | PLANNED |
+| S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows; the cast entry, the encrypted tally state and the `enact` entry (O40) | DONE (Q-S10-1 .. Q-S10-10 (a), USER 2026-10-24; Q-S10-11 (a) and Q-S10-12 (d), USER 2026-10-25): the DAO contract; the fill is out of S10 by Q-S10-12 (d) (row S10R, O46). `make -B check` EXIT 0 with the S9 counts, except 55 examples (+1, `examples/daokit.lang`, O44), 242 evals (+11, the daokit views), 7 runs (+1, `test/run/daokit.script`), 16 lower refusals and 33 checks (-1 each: `test/lower/env-block.lang` leaves the refusal list) and 59 evm steps (+16: the blocks row of O17 and the 15 calls of daokit.script on the EVM chain); the differential stays at 14 host runs, 14 EVM rows and 28 guest evals. The contract is written by hand from the `ballottool dao` constants, NUMBER is set by `evm t8n` (O36, O43), and the writer does not change. New gate lines: `dao regressions: passed` (`test/ballottool.c`), `dao size rows: runtime 16702 bytes (limit 24576), initcode 16737 bytes (limit 49152)` (O15), `dao gas rows` (printed, not checked; docs/VALIDATION.md) and `dao chain: 33 steps, 0 failures` (`test/dao.sh`); mutants n1, n2, c1 .. c5, e1, e2 killed (9 of 9, docs/VALIDATION.md) |
+| S10R | The reactor contract (Q-S10-12 (d), O46): fillCipher, fillAuth, fillOpen, fillSettle and cancel in their own contract, with the window of the DAO contract (O15, O35, O41); the fill chain rows, the gas rows and the mutants f1 .. f4; the bound of Q-S10-11 (a) (`times` k <= 8, window <= 8u); the randomness proofs stay host rows (O45). The size cause is the inline lowering (each helper inline at each call): fillSettle 8915, fillOpen 5333, fillCipher 4240, fillAuth 1538, cancel 130 runtime bytes. The input is the S10 b5 work in ~/Documents/intent-lang-work/S10-b5/ (reactor.lang, daokit-full.lang, 7 eval rows) | PLANNED |
 | S11 | Mutants and close | PLANNED |
 
 ## 10. Open items
@@ -442,6 +463,11 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   else two contracts with the reactor reading `Params` from the DAO by a
   view call. RULED: Q6 (a), one contract. If the S10 size row breaks
   EIP-170, the split goes back to the USER.
+  Closed in S10 for the DAO contract: runtime 16702 bytes (limit 24576)
+  and initcode 16737 bytes (limit 49152), the `dao size rows` line of
+  test/dao.sh. The full measure (the DAO part and the reactor part in one
+  contract) is 37038 runtime bytes, over EIP-170 (Q-S10-12): by (d) the
+  reactor part goes to row S10R with its own contract.
 - O16: exponential ElGamal decryption needs a discrete log. The host
   evaluator bounds the plaintexts (for example 2^40) for the tests; the
   chain checks `m G` for a claimed `m` and never solves a discrete log.
@@ -499,6 +525,15 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   above in S8; NUMBER lowering and the block-sensitive chain rows in S10.
   The line numbers above are those of the S2 port (orbit-lang 2162fb2);
   S3 to S7 can move them, so S8 finds the sites again by name.
+  Closed in S10: `IR_ENV_BLOCK` lowers to NUMBER (src/ir.h, src/lower.c,
+  `env_op` in src/evm.c, EVM_OP_NUMBER 0x43), and
+  test/lower/env-block.lang leaves the refusal list. The block-sensitive
+  chain rows: test/run/blocks.script on the EVM at NOW 1, BLOCK 42 (it
+  stores 42) and the castEnd rows of test/run/daokit.script and
+  test/dao.sh (a castSeal at BLOCK 11 reverts, an enact at BLOCK 0
+  reverts). They kill the mutants n1 (TIMESTAMP for NUMBER) and n2 (the
+  t8n step drops BLOCK). The quote rows above (block 100 and 105) need
+  the fill: row S10R.
 - O18 (S3, Q-S3-7): Charter and Ratified fix the rule type R to Size; the
   block has no type parameter.
 - O19 (S3, Q-S3-8): Orbit is a family of the front.c orbit splice; def_at
@@ -549,6 +584,10 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 - O31 (S6, Q-S6-7): the chain takes the Lagrange coefficients as hints and
   does not check them. The check lambda_i prod (x_j - x_i) = prod x_j mod r
   needs a word mulmod (S10, the chain form).
+  S10 (Q-S10-7 (a)): the Lagrange constants are contract constants (l1
+  = 2 and l2 = -1 mod r for the fixed quorum {1, 2}, from `ballottool
+  dao`). The chain does not check them: the word prims have no multiply
+  (Q-S10-11).
 - O32 (S7, Q-S7-2): `settle` (S8) takes its `ZKProof` as an argument.
   `verified` is a law def, so a guest def cannot make a proof outside a
   law type.
@@ -571,12 +610,19 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   settleM is settleS at that window. A window-4 proof at a window-6
   market is TYPE_MISMATCH (a scratch check in S9 b2), and the mutant l1
   (settleM reads the new Params) fails the check of lawWindow.
+  The chain side (fillSettle reads the window from the contract state)
+  goes with the fill to row S10R (Q-S10-12 (d)): this row stays open for
+  it.
 - O36 (S8, b1): NUMBER on the chain. evm 1.14.12 panics on a genesis
   number more than 0 ("can't commit genesis block with number > 0"), and
   `evm run` has no flag for the block number. Thus `evm run --prestate`
   cannot set NUMBER, and the S10 row text "the block number in the
   prestate" is wrong. S10 needs another route, for example the `evm t8n`
   env field `currentNumber` or `evm statetest`.
+  Closed in S10: the `evm t8n` route (`currentNumber` is BLOCK), opt-in
+  by `numbered=1` in test/evmchain.sh (O43). The last line of the trace
+  is the summary with the return word and the execution gas; its revert
+  form is in docs/VALIDATION.md.
 - O37 (S8, Q-S8-2, DEVIATION 1): rule R1 refuses a program family in
   guest and kit mode, so Intent, Quote, Transfer and Swap are Prod
   aliases with a constructor def and one accessor def for each field, not
@@ -600,6 +646,11 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   check, the encrypted tally (the sum of the slot ciphertexts) and the
   window field in the state, and an `enact` entry that checks the
   opening before it sets the window.
+  Closed in S10 (examples/daokit.lang): castSig, castSlot and castSeal
+  (the null N of the key image keys each check), the encrypted tally T0
+  and T1 (the sums of the slot ciphertexts) and window in the state, and
+  enact checks the opening of the slot 0 tally before it sets the window
+  (test/dao.sh steps 29 .. 33).
 - O41 (S9, b2, DEVIATION 1): the window fixture is swapped. `meaning` is
   `Accept w t so mo o` = w*(so - o) <= t*(so - mo), so a longer window
   decays slower, and a fill that is short at window 4 is short at window
@@ -608,11 +659,45 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   where fill6 (t 2, o 6, the S8 proof at window 4) is short
   (6*2 > 2*4); govern sets window 4, and fill6 then settles. windowAfter
   is 4, not 6.
+  The chain rows of this fixture (fill6 is short at window 6 and settles
+  after enact sets window 4) go with the fill to row S10R (Q-S10-12
+  (d)): this row stays open for them.
 - O42 (S9, b2, DEVIATION 2): Opens in examples/intent.lang is at Size
   (`Enc Size -> Size -> Type 0`, used by Fill). govern takes
   `OpensH (tallyEnc n bs) h` with `OpensH : Ballot -> Hist -> Type 0`
   (`ZKProof (Path Hist (decrypt Hist c) h)`) in place of a type-indexed
   `Opens Hist`. The S8 Opens and Fill do not change.
+- O43 (S10, b1, DEVIATION 1): the t8n route is opt-in. The S10 text
+  said: at BLOCK 0 a chain step stays `evm run`, at BLOCK > 0 it is `evm
+  t8n`, and a BLOCK > 0 step from a caller that is not the key address
+  fails. But the S8 migration gave the current scripts BLOCK = NOW (100u
+  .. 113u, 1u .. 9u, 99u) at the callers 0x..aa and 0x..bb, so each
+  current row would move to t8n and fail on the caller. Thus a chain sets
+  `numbered=1` to get the t8n route: then a step with BLOCK > 0 runs on
+  `evm t8n` from the key address 0xa94f..0b. Without it, each step stays
+  `evm run --prestate` (NUMBER 0), and all current rows stay
+  byte-identical. test/evm.sh sets it for the blocks and daokit chains,
+  test/dao.sh for its full chain.
+- O44 (S10, b3, DEVIATION 2): the kit file is examples/daokit.lang, not
+  examples/dao.lang (Q-S10-3 (a), Q-S10-4 (a)). examples/dao.lang is the
+  S7 guest prelude that the S9 writer gate reads (test/gate.sh,
+  test/precompile.sh, test/run.sh), and the writer rows do not change,
+  so the prelude stays. Thus the run script is test/run/daokit.script
+  (test/run.sh runs NAME.script on examples/NAME.lang). It joins the EVM
+  chain differential of test/evm.sh, not test/contract/diff.txt: that
+  file is the S9 writer differential (`PROG START GUEST PERMUTED BALLOTS
+  NAME... => OUTCOME SELF`), and a hand-written kit file has no row in
+  that form. `ballottool dao` keeps its mode name.
+- O45 (S10, Q-S10-8 (a)): the randomness proofs of the intent and the
+  quote (the S7 Sigma verifiers) stay host rows; the reactor entries
+  check the amount openings only. This goes with the fill to row S10R.
+- O46 (S10, Q-S10-12 (d)): the fill is out of S10. fillCipher, fillAuth,
+  fillOpen, fillSettle and cancel, the views amountOf and closedOf, the
+  fill chain rows with the two mock tokens (0x..ee in, 0x..ef out), the
+  fill gas rows and the mutants f1 .. f4 go to row S10R, with the bound
+  of Q-S10-11 (a). S10 b5 wrote the reactor part, ran its 7 eval rows (as
+  forecast) and measured the full contract (37038 runtime bytes, O15),
+  then took it out of the repo. O35 and O41 stay open for it.
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -1116,3 +1201,102 @@ Each has a recommended (a). All nine are RULED (S9 kickoff s2,
   U256)` and an `enact` entry that takes the opened counts as words that
   it does not check. (c) a full cast entry now (more than 22 arguments,
   so a state of partial checks over several calls). RULED: (a).
+
+Questions of the S10 kickoff (2026-10-24, the survey is
+~/Documents/intent-lang-work/S10-survey.md). Each has a recommended (a).
+All ten are RULED (S10 kickoff s2, 2026-10-24). USER: "Rulings on
+Q-S10-1..10: take all recommendations."
+
+- Q-S10-1 (S10, O36): the NUMBER route. (a) a step with BLOCK more than 0
+  runs `evm t8n` (env `currentNumber` BLOCK, `currentTimestamp` NOW, one
+  signed tx from a fixed test key; the result word and the gas come from
+  the trace summary line, the storage from the output alloc). A step at
+  BLOCK 0 stays `evm run --prestate`, so all current rows do not change.
+  A row at BLOCK more than 0 uses the key address
+  0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b as CALLER (probe: NUMBER
+  0x2a stored, view word 0x2a, gas 0xf). RECOMMENDED. (b) `evm t8n` for
+  every step (every caller and pinned row moves to a key address). (c)
+  `evm statetest` (the same caller limit, a state root to pin for each
+  row). (d) no chain row with a block more than 0. RULED: (a).
+- Q-S10-2 (S10, O17): the lowering. (a) `IR_ENV_BLOCK` lowers to NUMBER
+  (0x43) in src/ir.h, src/lower.c, src/evm.c (a switch, no default arm)
+  and src/asm.h; test/lower/env-block.lang leaves the refusal list (lower
+  refusals 17 to 16); test/run/blocks.script joins the EVM differential
+  at BLOCK 42. RECOMMENDED. (b) (a), and env-block.lang stays as an
+  accepted row of a new lower-ok list. RULED: (a).
+- Q-S10-3 (S10): the written contract. (a) a new kit file
+  examples/dao.lang with the entries of section 7, written by hand from
+  the host constants; src/front/writer.c and its rows do not change (the
+  plain tally of orbit-lang stays the writer reference). RECOMMENDED. (b)
+  writer.c gets an encrypted mode that writes the S10 contract from the
+  DAO slots (any ring size). (c) (a) now and (b) in S11. RULED: (a).
+- Q-S10-4 (S10, O15): one contract. (a) examples/dao.lang holds the DAO
+  and the reactor entries. The measured kit runtime of ballot.lang (11
+  views) is 10190 bytes, so the forecast is under 24576. If the b4 size
+  row is over EIP-170, STOP and ask. RECOMMENDED. (b) two contracts now,
+  the reactor reads the window by a view call. RULED: (a).
+- Q-S10-5 (S10, O39, O40): the cast. One ballot has 43 words, more than
+  22 (O39). (a) three calls under the nullifier N = hash (hash ix iy)
+  poll: castSig (14 words: sigOk, then the 8 ciphertext words are stored
+  under N), castSlot (15 words: j is an argument, one OR proof on the
+  stored slot j), castSeal (7 words: both slot flags, the sum proof, the
+  tally add, N used). A second castSig of a pending N starts N again.
+  RECOMMENDED. (b) (a), but castSig refuses a pending N. (c) (a) with two
+  slot entries castSlot0 and castSlot1 (the OR proof code two times).
+  RULED: (a).
+- Q-S10-6 (S10, O17): the tally state and the phases. (a) 8 tally words
+  (the c1 and c2 points of slot 0 and slot 1) start at 0, the identity of
+  ecAdd; `casts`; `castEnd` (a block number set by init); castSeal
+  reverts when block is more than castEnd; enact reverts when block is
+  not more than castEnd, and a second enact reverts. RECOMMENDED. (b) the
+  writer rule: enact when casts is the ring size, no block test. (c) both
+  rules. RULED: (a).
+- Q-S10-7 (S10, O31, O40): enact. (a) one call of 15 words: the opening
+  of the slot 0 tally (two shares of the quorum {1, 2} with DLEQ, the
+  Lagrange constants of that quorum), yes = m, no = casts - yes (each
+  sealed cast passed slotBound and sumBound), window := decide proposal
+  window (a tie keeps the window, Q-S9-4). Fixture: yes 2, no 1, the
+  window moves from 6 to 4 (O41). O31 becomes "the Lagrange constants are
+  contract constants". RECOMMENDED. (b) open both slots (two open calls,
+  then enact). (c) (a) plus a checked Lagrange hint (a new word mulmod in
+  the kit). RULED: (a).
+- Q-S10-8 (S10, O35, O39): the fill. (a) four calls: fillCipher (16
+  words: the digest D and the 12 amount words are stored), fillAuth (9
+  words: intentHash over D, authOk, the replay key not used), fillOpen
+  (17 words: the opening of amount k of h), fillSettle (h and o: t = min
+  (block - start) window, the window from the state, the rule 4.1, the
+  replay key used, two pulls, emit Settled); cancel (nonce: the replay
+  key of caller, emit Cancelled). o is the plaintext word of the solver
+  (the pulls show amtIn and o). The intent and quote randomness proofs
+  stay host rows (a new O row). RECOMMENDED. (b) (a) plus the randomness
+  check of the 3 intent ciphertexts on the chain (3 more calls). (c) a
+  fill with plaintext amounts in S10, the openings in S11. RULED: (a).
+- Q-S10-9 (S10): the host data. (a) a new mode `ballottool dao` prints
+  the constants of examples/dao.lang (the 3 ballots of S9, the slot 0
+  opening of the tally by members 1 and 2, the S8 fill intent with the 3
+  amount openings, the secptool signature) and adds `dao regressions`
+  rows. RECOMMENDED. (b) a new test/daotool.c. (c) the constants by hand
+  from the existing `words` modes. RULED: (a).
+- Q-S10-10 (S10): the chain test. (a) a new test/dao.sh (deploy, the
+  calls of section 7, the size rows, output `dao chain: N steps, 0
+  failures`) and a new test/run/dao.script on the guest and the EVM
+  differential. RECOMMENDED. (b) the dao calls in test/precompile.sh.
+  RULED: (a).
+- Q-S10-11 (S10, b5): rule 4.1 at word level is w*(so - o) <= t*(so -
+  mo), and the word prims have no multiply. (a) a bounded multiply in
+  the kit, no language change: `times k x` by a flagIf chain over k = 0u
+  .. 8u (sums of x); fillSettle reverts when the window is more than 8u
+  (t <= w), and a new O row names the bound. RECOMMENDED. (b) a new prim
+  u256Mul (check, eval, lower, MUL 0x02, a trap on overflow). (c) the
+  fill moves out of S10. USER 2026-10-25: (a).
+  RULED: (a).
+- Q-S10-12 (S10, b5, O15 SIZE STOP): the DAO part and the reactor part
+  together have 37038 runtime bytes (limit 24576; the DAO part 16702,
+  the reactor part 20336: fillSettle 8915, fillOpen 5333, fillCipher
+  4240, fillAuth 1538, cancel 130), because the lowering puts each
+  helper inline at each call. (a) shrink the kit forms. (b) a helper
+  used more than once lowers to one internal subroutine. (c) two
+  contracts. (d) the fill moves out of S10: S10 closes with the DAO
+  contract; the reactor part goes to a new row with its own contract.
+  RECOMMENDED. USER 2026-10-25: (d).
+  RULED: (d).

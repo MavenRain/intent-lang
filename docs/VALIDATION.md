@@ -541,3 +541,101 @@ the gas, and there is no cap.
 | 23 | EVM_SIZE | EVM_SIZE | | | | | | |
 | 28 | EVM_SIGNATURE | EVM_SIGNATURE | | | | | | |
 | 29 | EVM_RING (`langc contract`) | | | | | | | |
+
+## The contract (S10)
+
+S10 closes with the DAO contract (Q-S10-12 (d): the fill goes to row
+S10R of docs/PLAN.md). examples/daokit.lang is a kit file written by
+hand (DEVIATION 2, PLAN O44: examples/dao.lang is the S7 guest prelude
+of the writer gate and does not change). Its entries are castSig,
+castSlot, castSeal and enact, and its views are tallyWord, windowNow,
+castCount and stageOf. `langc --kit build examples/daokit.lang` gives
+16737 initcode bytes (limit 49152, EIP-3860) and 16702 runtime bytes
+(limit 24576, EIP-170). The DAO part and the reactor part in one
+contract have 37038 runtime bytes (PLAN O15, Q-S10-12).
+
+The host data. `build/ballottool dao` prints each constant of
+examples/daokit.lang as one `name 0x<word>` line: the election key, the
+Lagrange constants l1 l2 of the quorum {1, 2}, the words of voters 0, 1
+and 2 (yes, yes, no), the slot 0 opening of the tally by members 1 and
+2, the fill intent and its amount openings, and the signatures of nonces
+7 and 8 (the fill words are the input of row S10R). The no-argument run
+adds the `dao regressions` rows after the ballot rows: the opening of
+the tally gives m 2 (no 1), the amount openings give 3, 8 and 4, the
+digest and the intent hashes of nonces 7 and 8 equal the pinned words,
+both signatures recover the pinned owner, and the nonce 7 signature over
+the hash of nonce 8 does not. The last line is `dao regressions:
+passed`.
+
+test/dao.sh is the chain test. It reads the words at run time from
+`build/ballottool dao` and `build/ballottool words` (the script has no
+hex words). It deploys the contract and prints `dao size rows: runtime
+16702 bytes (limit 24576), initcode 16737 bytes (limit 49152)` (a size
+over a limit is a FAIL row), then runs 33 steps: voter 0 castSig, a
+castSeal before castSlot reverts, castSlot 0 and 1 with the stageOf rows
+1, 3 and 7, castSeal, a second castSig of voter 0 reverts (the null is
+used); voters 1 and 2; a castSeal at BLOCK 11 (more than castEnd 10)
+reverts; castCount 3; tallyWord 0 .. 7 equal the host sums T0 and T1;
+windowNow 6; an enact at BLOCK 0 reverts; an enact with m 3 at BLOCK 11
+reverts; enact with m 2 gives ok; windowNow 4; a second enact reverts.
+The last line is `dao chain: 33 steps, 0 failures`. The steps at BLOCK
+0 run on `evm run` from 0x..aa; the steps at BLOCK 11 run on `evm t8n`
+from the key address 0xa94f..0b (numbered=1, PLAN O43).
+
+test/run/daokit.script (15 calls, NOW is the line number) runs on the
+guest (`langc run`, test/run/daokit.out) and on the EVM chain
+differential of test/evm.sh (after each step, the storage, the result
+and the logs of the EVM equal the guest), as test/run/blocks.script
+does. It is not a row of test/contract/diff.txt: that file is the S9
+writer differential, and a hand-written kit file has no row in its form.
+Thus runs is 7 and evm steps is 59, and the differential stays at 14
+host runs, 14 EVM rows and 28 guest evals.
+
+The t8n forms (evm 1.14.12, `evm t8n --state.fork Shanghai --trace`).
+The last line of out/trace-0-<txhash>.jsonl is the trace summary. A
+REVERT with data gives `{"output":"<data>","gasUsed":"0x..","error":"execution
+reverted"}` and receipt status 0x0; INVALID gives an empty output, the
+error `invalid opcode: INVALID` and all the gas; a step with no error
+gives `{"output":"..","gasUsed":".."}` and status 0x1, with the logs in
+receipts[0].logs of result.json. test/evmchain.sh maps the summary as it
+maps `evm run`: the error `execution reverted` with the output ae96083a
+is a trap, with an empty output a revert, with other data `revert HEX`;
+another error is an error; no error is ok or `out HEX`. The output alloc
+writes each storage value as a full 0x word; the helper removes the 0x
+and the leading zero bytes (the `evm run --dump` form; zero is `00`),
+so that a t8n step can come before an `evm run` step. The gasUsed of
+result.json includes the intrinsic gas, so the gas rows do not use it.
+
+Gas (`dao gas rows`, test/dao.sh, measured on 2026-10-25 at 3df9d96 with
+the S10 work, geth `evm` 1.14.12). Each value is the execution gas.
+deploy: `evm run --create --statdump` prints the gas left of 30000000,
+so the row is 30000000 less the print (it includes the code deposit, 200
+gas for each runtime byte). castSig, castSlot and castSeal: `evm run
+--statdump` of the same sender and input on the same prestate at BLOCK
+0. enact: the gasUsed of the t8n trace summary at BLOCK 11. The first
+castSeal writes the tally words and costs more than a later castSeal.
+The forecast of castSig was about 257800 (81000 + 8 x 22100). The gate
+does not check the gas.
+
+| Call | Gas |
+| --- | --- |
+| deploy | 3410413 |
+| castSig | 291276 |
+| castSlot | 96024 |
+| castSeal (first) | 283298 |
+| castSeal (later) | 129398 |
+| enact | 117808 |
+
+The S10 build killed 9 of 9 mutants, as recorded in
+~/Documents/intent-lang-work/S10-mutants.out (each rebuild is `make
+-B`): n1 (evm.c emits TIMESTAMP for IR_ENV_BLOCK; the blocks row of
+test/evm.sh, and daokit.script lines 13 and 14), n2 (the t8n step of
+test/evmchain.sh sets currentNumber 0x0; the blocks row, and
+daokit.script lines 12 and 13), c1 (castSig without the used test; dao
+step 9), c2 (castSlot reads slot 1 - j; dao steps 4 and 6, and the
+stageOf steps 5 and 7), c3 (castSeal without the slot flags; dao step 3,
+and step 8), c4 (afterSeal keeps the old T1 words; dao steps 24 .. 27),
+c5 (castSeal without the castEnd test; dao step 17, and step 18), e1
+(enact without the opening check; dao step 30, and step 31) and e2
+(enact without the castEnd test; dao step 29, and step 31). The mutants
+f1 .. f4 of the fill go to row S10R.

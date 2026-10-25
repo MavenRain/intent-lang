@@ -35,3 +35,4 @@ onehot.lang
 blocks.lang
 intentsig.lang
 ballot.lang
+daokit.lang

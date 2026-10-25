@@ -105,6 +105,17 @@
   (REFUSE_LAW). New: 18 eval rows (tally 6, intent 3, ballot 9), 1 check
   refusal, 9 precompile steps, 1 example (ballot.lang; tally.lang is
   counted at b1) and `ballot regressions`.
+- S10 (the DAO contract; O15, O17, O36, O40): `Env.block` lowers to
+  NUMBER, and the chain tests set the block by `evm t8n` (opt-in by
+  `numbered=1`, PLAN O43). The kit examples/daokit.lang (PLAN O44) has
+  the entries castSig, castSlot, castSeal and enact and the views
+  tallyWord, windowNow, castCount and stageOf (16702 runtime bytes, 16737
+  initcode bytes). `ballottool dao` gives the words and `dao
+  regressions`; test/dao.sh runs 33 chain steps and prints the size and
+  gas rows; test/run/daokit.script runs on the guest and on the EVM
+  chain. New: 1 example (daokit.lang), 11 eval rows, 1 run and 16 evm
+  steps (blocks 1, daokit 15); the env-block lower refusal and its check
+  leave. The fill is not in S10 (Q-S10-12 (d), PLAN row S10R).
 
 ## Remaining M0 work
 

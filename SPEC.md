@@ -220,6 +220,25 @@ chain from `digestTag` over the 8 slot ciphertext words), `tallyX` and
 summed slots. These views are
 eval rows and precompile steps only until S10 (PLAN O40).
 
+Part S10 (the DAO contract): the kit file `examples/daokit.lang` (PLAN
+O44) is the DAO part of the contract of PLAN section 7, written by hand
+from the `ballottool dao` constants (the writer does not change).
+`Env.block` lowers to NUMBER (O17). The state holds the null set `used`,
+the pending ballot words `pend` and their stage flags, the encrypted
+tally T0 and T1 (the ecAdd sums of the slot ciphertexts), the cast
+count, castEnd, the proposal and the window. A cast is three calls:
+castSig checks the ring signature over the ballot digest and keeps the 8
+ciphertext words under the null N of the key image; castSlot checks the
+one-hot proof of one slot; castSeal (at a block up to castEnd) checks
+both slot flags and the sum proof, adds the slots to the tally and marks
+N used. After castEnd, enact checks the threshold opening of the slot 0
+tally by the quorum {1, 2} (the Lagrange constants are contract
+constants, O31), sets yes = m and no = casts - yes, and sets the window
+to the proposal when yes > no (a tie keeps the window). A second enact
+reverts. The reactor part (the fill) is not in S10 (Q-S10-12 (d), PLAN
+O46): it goes to row S10R with its own contract, because one contract
+with both parts has 37038 runtime bytes, over EIP-170 (O15).
+
 ## 3. Type formers
 
 > Write here: only the deviations from the formers. Do not copy the forms.
