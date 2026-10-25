@@ -1,12 +1,14 @@
 # intent-lang status
 
-> Write here: one paragraph. Say which milestone the build implements, and
-> which milestone it does not complete yet.
+The build implements the milestones M0 to M2 and a part of M3 (SPEC.md
+section 10). The slices S2 to S10R built the language, the DAO contract
+and the reactor contract. S11 killed the refusal mutants (12 of 12) and
+wrote the close docs, and the plan is closed after it. M0 is complete
+except the probe file (see Remaining M0 work). M3 has no speed work and
+no checked certificate for the output. The final gate is the header of
+docs/VALIDATION.md.
 
 ## Implemented
-
-> Write here: one item for each feature that works. Name the former (F1 to
-> F15), the core type or the core operation.
 
 - S2 (kernel port): `src/`, `domain/`, `examples/`, `test/`, `gen/` and
   the Makefile of orbit-lang 2162fb2 (by `git archive`), and the orbit
@@ -130,23 +132,104 @@
   a stub token, PLAN O47). New: 1 example (reactor.lang), 19 eval rows
   (reactor 18, daokit enactPay), 1 run and 26 evm steps; mutants f1 ..
   f9 killed.
+- S11 (the refusal mutants and the close; Q-S11-6 (a), Q-S11-7 (a)): one
+  mutant for each refusal code that had no intent-lang mutant
+  (REFUSE_STATE, REFUSE_DATA, REFUSE_NAME, REFUSE_REC, REFUSE_MAP,
+  REFUSE_EVENT, REFUSE_HISTORY_WRITE, REFUSE_AXIOM, REFUSE_KIT, REFUSE_SIG
+  and REFUSE_CONTRACT) and q9b: 12 of 12 killed (docs/VALIDATION.md "##
+  The refusal mutants (S11)"). The check rows kit-literal-nat-infer.lang
+  and kit-literal-word-infer.lang kill q9 (+2 check refusals, +2 kit-only
+  refusals; PLAN O49). The S6 mutant lines go into docs/VALIDATION.md.
+  No file in src/ changes. S11 writes the close docs, and the plan is
+  closed.
 
 ## Remaining M0 work
 
-> Write here: one numbered item for each missing feature. Say what each item
-> needs first.
-
-1. <work item>.
+1. `probe/CAPABILITY.md` is the kit template. S2 ported it from
+   orbit-lang 2162fb2, and its fields are not filled in. It needs a
+   probe run of the TinyCC host. No gate script reads it, and the plan
+   is closed after row S11, so no slice holds this item.
 
 ## Known limits
 
-> Write here: one item for each limit of the current build, with its cause
-> (a fuel budget, a host limit, a stack size).
-
-- <limit>.
+- O16: ElGamal decryption is exponential, so it needs a discrete log. The
+  host evaluator bounds the plaintexts for the tests. The chain checks
+  `m G` for a claimed `m` and never solves a discrete log.
+- O28: `Cofree F` (a cocell field `D A -> F (D A)` for a CM `F`) gives
+  REFUSE_CELL. Its positions depend on the shape of `F`, so it needs
+  M-types (native codata, or the limit of the finite approximations).
+- O29: the BSGS walk is affine (one field inverse for each step), so
+  every row stays at 16 plaintext bits. A Jacobian walk with a batch
+  inverse makes a larger bound practical.
+- O30: the dealer is trusted. The host deals the Shamir shares from fresh
+  private seed entropy. A distributed key generation (DKG) replaces the
+  dealer. docs/VALIDATION.md states the assumption.
+- O31: the chain does not check the Lagrange coefficients. They are
+  contract constants (l1 = 2 and l2 = -1 mod r for the quorum {1, 2}). The
+  check needs a word multiply, and the word prims have no multiply.
+- O37: rule R1 refuses a program family, so Intent, Quote, Transfer and
+  Swap are Prod aliases with a constructor def and one accessor def for
+  each field, not families.
+- O38: `view` is not a def. `observe` is law-only, so privacyI and
+  privacyB state the view tuple in their Path types.
+- O39: one chain view over all the intent words takes 23 arguments, more
+  than the 22 of slotOk. Thus `cipherDigest` hashes the 16 ciphertext
+  words, and `intentHash` takes that digest as one argument.
+- O45: the chain does not refuse a fill whose intent or quote has a bad
+  randomness proof. The randomness proofs stay host rows (`sigma
+  regressions`); fillOpen checks only the openings of the amount words.
+- The window cap (Q-S11-5 (c)): `times` takes k <= 16, and fillSettle
+  reverts at a window more than 16u.
+- The transfer selector: the reactor entry `transfer (to : Addr) (amount
+  : U256)` has the selector a9059cbb (`transfer(address,uint256)`), the
+  selector of the pay CALL of enact. The entry sets the window only when
+  the caller is the DAO address (a contract constant). Another caller
+  reverts (docs/VALIDATION.md "## The reactor contract (S10R)").
+- The gas rows: `dao gas rows` and `reactor gas rows` are printed, not
+  checked, so a gas change does not fail the gate. docs/VALIDATION.md
+  records the numbers.
 
 ## Internal boundaries
 
-> Write here: one paragraph for each module group. Say which module holds
-> which job, which tests check which tables, and which types a program
-> cannot use.
+`src/front/` holds the front end: the lexer, the parser and the syntax
+tree (`lexer.c`, `parser.c`, `ast.h`), the checker with the BUILTINS table,
+the visibility classes and the refusal codes (`check.c`), the core terms
+(`core.h`), the evaluator, the conversion test and the printer (`eval.c`),
+and the entry point (`front.c`). `contract.c` is the contract prelude
+(slice K3a): `front_load` reads it after `domain/domain.lang` as trusted
+text of origin ORIGIN_KIT. `writer.c` is the contract writer: it writes
+the kit program text of the DAO in a checked guest program.
+
+The host crypto is in `src/front/`: `u256.c` (256-bit words), `bn254.c`
+(the field and G1), `secp256k1.c` (the recovery of the host ecrecover),
+`blsag.c` (bLSAG rings) and `src/keccak.c`. `elgamal.c` (exponential
+ElGamal), `threshold.c` (the threshold opening) and `sigma.c` (the Sigma
+verifiers) are not in `langc`: only the test tools link them
+(Makefile:12-16).
+
+`src/lower.c` lowers a checked program to the first-order IR of
+`src/ir.h` (K4a). `src/evm.c` (the EVM back end and the ABI selectors) and
+`src/asm.c` (the assembler) write the EVM bytecode behind the interface of
+`src/target.h`. `src/main.c` is the `langc` command (exit 0 ok, 1 refused,
+2 usage or IO).
+
+`make -B check` runs `test/gate.sh` first: the examples, the parse and
+check refusals (`test/parse/expect.txt`, `test/check/expect.txt` and
+`kit.txt`), the kit-only refusals, the evals (`test/eval/expect.txt`), the
+proves, the contract rows (`test/contract/dao.expect`), the ring sizes and
+the guest differential (`test/contract/diff.txt`). Then `test/run.sh`
+(the runs and the host differential), `asm.sh`, `build.sh`
+(`test/lower/expect.txt`), `dispatch.sh`, `evm.sh` (`test/abi.expect`),
+`precompile.sh`, `mock.sh`, `dao.sh`, `reactor.sh`, `diff.sh` and
+`review.sh` run. The C tools (fronttool to evmtool) check the domain,
+crypto, path, run, writer, build, lowering, emitter and hashing rows.
+
+A guest program (origin ORIGIN_PROGRAM) can use only the VIS_GUEST names.
+A VIS_INTERNAL name (the kit words `Nat`, `Flag`, `U256`, `Addr`, `Map` and
+their prims, `hash`, `ecrecover`, the curve prims and the zk prims) or a
+name of origin ORIGIN_KIT gives REFUSE_KIT, and `langc --kit` admits it. A
+VIS_CELL name (the cons list: `List`, `nil`, `cons` and `unfold`, PLAN O24)
+gives REFUSE_CELL (rule R1). A law-only name (`decrypt`, `observe`,
+`open`, `verified`, an elim, fold or projection of a sealed family) out of
+a law gives REFUSE_LAW. A reserved, core or domain name gives REFUSE_NAME,
+and a use of the definition itself or of a later one gives REFUSE_REC.

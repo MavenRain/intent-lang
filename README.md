@@ -15,10 +15,12 @@ intent-lang comes from lang-template with the tcc-evm-contract host.
 - `docs/PLAN.md`: the rulings, the reading of the type-former ruling, the
   minimal base signature, the chain fragment, the kernel route, the
   contract, the slices, the open items and the questions.
-- `SPEC.md`: the specification. Fill each section.
+- `SPEC.md`: the specification: the programs, the type formers, the core
+  types and operations, the target, the open items and the milestones.
 - `formers/FORMERS.md`: the type formers. `formers/tcc-evm-contract.md` gives their
   status on the tcc-evm-contract host.
 - `probe/CAPABILITY.md`: the host probe.
 - `docs/STATUS.md` and `docs/VALIDATION.md`: the status and the gate results.
-- `docs/host/README.md`: how to build and test the host kit, and how to
-  replace the sample domain in `domain/`.
+- `docs/host/README.md`: how to build and test the host kit, and the gate
+  scripts. `domain/domain.lang` holds the intent-lang domain: its
+  families and its law defs.

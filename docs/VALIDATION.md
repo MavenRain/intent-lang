@@ -1,5 +1,32 @@
 # Validation
 
+Date: 2026-10-25. tcc: 0.9.28rc. evm (go-ethereum): 1.14.12. Host
+executable: `build/langc` at 3aa7361 (S11 changes no file in `src/`).
+
+`make -B check` passes: it builds `langc` and the test tools with tcc,
+runs the clang `-Wall -Wextra -Wswitch-enum -Werror` check, and runs the
+gate scripts. It runs 56 examples, 19 parse refusals, 191 check
+refusals, 24 kit-only refusals, 261 evals, 2 proves, 7 contract rows (2
+written, 5 refused), 8 ring rows (6 built, 2 refused), 28 differential
+guest evals, 8 runs, 14 differential host runs, 11 run refusals, 8
+asmtool checks, 3 builds, 16 lower refusals, 33 build checks, 20
+dispatch checks, 85 evm steps, 14 differential EVM rows, 152 precompile
+steps, 13 mock rows, the 33 steps of the DAO chain, the 40 steps of the
+reactor chain, 15 diff rows, 24 emit regressions and the review,
+domain, bLSAG, ElGamal, threshold, Sigma, ballot, DAO, ecrecover, path,
+fuel, writer, output, lower and hashing regressions, with zero failures.
+The size rows are runtime 16883 bytes for the DAO and runtime 20571
+bytes for the reactor (the limit is 24576). The gas rows are printed,
+not checked. This is the final gate of intent-lang (`docs/PLAN.md` row
+S11). The plan is closed.
+
+## The orbit-lang port record (S2)
+
+S2 ported the text from here to the line "S10 is complete and closed."
+from orbit-lang 2162fb2. It is the record of the orbit-lang slices, and
+its `docs/STATUS.md` cites are to the orbit-lang 2162fb2 file. The
+paragraph below is the final gate of orbit-lang.
+
 Date: 2026-10-21. tcc: 0.9.28rc. evm (go-ethereum): 1.14.12. Host
 executable: `build/langc` at 8779688 (S10 B5 changes only the records).
 
@@ -37,8 +64,8 @@ Prop-like forms (USER ruling S1). Refusals cover `Prop` and `SProp` as a
 type and as a defined name, four irrelevance marker spellings, refl
 between two non-convertible elements of Trunc1 A, Trunc0 A and an
 isProp-typed type, and a path of paths by refl between two different
-loops. Mutants M1 to M5, M3b and M4b are killed (7 of 7, docs/STATUS.md
-"## S2").
+loops. Mutants M1 to M5, M3b and M4b are killed (7 of 7, orbit-lang 2162fb2
+docs/STATUS.md "## S2").
 
 The S3 review prunes the base span (PLAN section 4). Guest mode, the
 default, refuses the kit names, the sealed-lang base ops natDiv, natMod,
@@ -51,7 +78,7 @@ slot types (REFUSE_SIG). The review adds 22 REFUSE_KIT and 6 REFUSE_SIG
 check refusals, the guest example `signature` and its eval, and the
 kit-only assertion: each REFUSE_KIT row gives `ok` under `--kit`.
 Mutants K1 to K7, K2b and K4b are killed (9 of 9, 50 admissions,
-docs/STATUS.md "## S3").
+orbit-lang 2162fb2 docs/STATUS.md "## S3").
 
 The S4 review adds Orbit and the dependent eliminator (PLAN section 8,
 USER ruling 2026-10-17). The kernel declares Orbit and orbitProj
@@ -65,7 +92,7 @@ wrong case type, case count, scrutinee or motive domain, a motive into
 Prop, elim on a Path (no K), Unit eta, and an Orbit value at a word
 position. Mutants G0, G1, O1, E1, E1b, E2, E3, E4, F1, P1, P1b and N1b
 are killed (12 of 14, 13 admissions). N1 meets a second refusal class,
-and L1 is an equivalent mutant for its row (docs/STATUS.md "## S4").
+and L1 is an equivalent mutant for its row (orbit-lang 2162fb2 docs/STATUS.md "## S4").
 
 The S5 review ports Glue, ua, uaBeta and hcomp at U from coin-lang
 (44c917f, 91d7091 and 34acff5, PLAN section 8). Glue, glue and unglue
@@ -82,7 +109,7 @@ neutral equivalence, hcomp at U with a wrong cap, hcomp above Type 0, ua
 on a non-equivalence, a Glue at Prop, two isEquiv proofs or two ua
 proofs that are not convertible, and an hcomp at a word position.
 Mutants M1, M2 and M4 to M9 are killed (8 of 9, 7 admissions). M3 meets
-a second refusal class (PATH_END) (docs/STATUS.md "## S5").
+a second refusal class (PATH_END) (orbit-lang 2162fb2 docs/STATUS.md "## S5").
 
 The S6 review adds indexed families with path constructors (HIIT, F18)
 and inductive-inductive blocks with path constructors (QIIT, F19) as new
@@ -96,7 +123,7 @@ later sort, Prop in an index telescope, a fold that omits a squash case
 one argument too many, and a block fold whose parameters do not inhabit
 the telescope of a sort. Mutants M3b, HI1, HI2, BO, BOb, FA, SR, CF and FS
 are killed (9 of 9). BO and BOb are code kills, and FA needed a second
-run with the new row `block-fold-extra` (docs/STATUS.md "## S6").
+run with the new row `block-fold-extra` (orbit-lang 2162fb2 docs/STATUS.md "## S6").
 
 The S7 review adds the dependent eliminator on a domain family with path
 constructors (F16, USER ruling S7 Q1), the DAO prelude after `orbitProj`
@@ -112,7 +139,7 @@ Prop in the motive telescope, a wrong type at the slot `outcomeSet` or
 `outcomeSet`, a constitution that is not invariant and a wrong gov unit.
 Mutants EC, EP, ES, EV, PJ, PS, OS, MN and HIW are killed (9 of 9). EC,
 PS, OS and HIW are code kills, and HIW closes the S6 open item
-`hiit-wrong-index` (docs/STATUS.md "## S7").
+`hiit-wrong-index` (orbit-lang 2162fb2 docs/STATUS.md "## S7").
 
 The S8 review adds the ZK layer (PLAN section 8, USER rulings S8 Q1 to
 Q6): BN254 G1 in C (`src/front/bn254.c`: Fp and Fr with the modulus as a
@@ -133,7 +160,7 @@ of a ZK name (`zk-redefine`, REFUSE_SIG). The EVM rows in
 choice, a wrong poll id, a key image off the curve, the key image (0, 0),
 s_1 + r in place of s_1, and a reused key image. Mutants FP, ON, HP, CH,
 NU, CC, PI and RG are killed (8 of 8). CC and PI are code kills
-(docs/STATUS.md "## S8").
+(orbit-lang 2162fb2 docs/STATUS.md "## S8").
 
 The S9 review adds the section 7 contract writer (PLAN row S9, USER
 rulings Q-S9-1 to Q-S9-4): `langc contract` (`src/front/writer.c`) writes
@@ -150,7 +177,7 @@ reused key image, a choice out of range and a cast at an old poll id.
 Mutants M1 to M15 cover the writer, the ring bound and the size and
 signature limits: 14 are killed, and M10 (the entry id that `nextOf`
 writes) is equivalent on the fixtures, because no fixture has two equal
-outcome tables (docs/STATUS.md "## S9", Q-S9-7). The chain probe (B4)
+outcome tables (orbit-lang 2162fb2 docs/STATUS.md "## S9", Q-S9-7). The chain probe (B4)
 moved to S10 (USER ruling S9 session 10), then was dropped (Q-S10-3
 (c)). No chain probe was run. The repo gate tests the kit EVM runner;
 it does not confirm the target chain's precompile set or code size
@@ -214,7 +241,9 @@ symmetric (`perm-member0-wrong`, PATH_END). B3 changes no kernel or
 host source, and it does not use `Orbit ≃ Bag n` (USER ruling S7, Q3),
 because the Member of `dao3` is not `Pos n0`. The S10 mutants (MR1 to
 MR5, MO1 to MO6 and MP1 to MP6) ran in B6, and 17 of 17 are killed
-(docs/STATUS.md "## S10", finding D3). S10 is complete and closed.
+(orbit-lang 2162fb2 docs/STATUS.md "## S10", finding D3). S10 is complete and closed.
+
+## Cocells, Enc and the threshold opening (S4 to S6)
 
 The S4 cocell comonads (O28) add the cofamily shape check and its text
 elaboration (src/front/check.c), the domain cofamily Stream, the laws in
@@ -311,8 +340,23 @@ BSGS at bits 16. Two review rows reject master-key recovery from one
 share using the former public coefficient and check that fresh dealer
 entropy changes the shares without changing the master public key.
 
-The S6 build killed t1 to t4, g1 and c1 (6 of 6), as recorded in
-~/Documents/intent-lang-work/S6-mutants.out. The review additionally
+The S6 build killed t1 to t4, g1 and c1 (6 of 6). The run is
+~/Documents/intent-lang-work/S6-mutants.sh, its output
+~/Documents/intent-lang-work/S6-mutants.out:
+
+| Mutant | Site | Change | Killer |
+| --- | --- | --- | --- |
+| t1 | src/front/threshold.c | the share check `return g1_eq(&l1, &r1) && g1_eq(&l2, &r2);` becomes `return 1;` | the rows D_2 + G and z_1 + 1 (BSGS gives NOT_FOUND) |
+| t2 | src/front/threshold.c | `if (k < t)` becomes `if (0)` | the row "one part" (lambda 1, NOT_FOUND) |
+| t3 | src/front/threshold.c | the part index check (zero, above n, or seen) becomes `0` | the row {1, 1} (lambda 0, NOT_FOUND); the rows {0, 2} and {2, 4} also crash |
+| t4 | src/front/threshold.c | the Lagrange denominator `xj - xi` becomes `xi - xj` | the k = 2 rows (at k = 3 the two sign flips cancel) |
+| g1 | domain/domain.lang | `law def open :` becomes `def open :` | the check row test/check/open-leak.lang |
+| c1 | examples/threshold.lang | the DLEQ check drops `ecMul (pair pkx pky) e` | the eval row threshold dleqGood |
+
+Each line of S6-mutants.out is `MUTANT killed` and `MUTANT restored`,
+then `rebuilt clean` and `mutants: 6 of 6 killed`.
+
+The review additionally
 reproduced master-key recovery on the original public-coefficient dealer:
 the new C regression failed with `FAIL threshold one share recovers master
 key` before the private-seed fix.
@@ -762,3 +806,55 @@ Previously acceptW 4 2 4 8 4 accepted 4 although rule 4.1 requires 6.
 The four rising price eval rows cover the rejected low offer, the exact
 midpoint, the start and the end. The original mutant step references
 above describe the pre-review chain.
+
+## The refusal mutants (S11)
+
+Q-S11-6 (a) gives one mutant to each refusal code that had no
+intent-lang mutant. Each mutant takes out one refusal in src/. Its
+killer is a check refusal row of test/check/expect.txt. The contract
+writer, not the checker, gives REFUSE_CONTRACT, so the killer of q11 is
+the `contract_refused` row of test/gate.sh for
+test/contract/open-choice.lang (name Choice). The run is
+~/Documents/intent-lang-work/S11-m/m1-mutants.sh: for each mutant one
+`sd -F` edit (one hit), `make -B build/langc`, the full test/gate.sh,
+then a restore by `cp` and a `cmp` against the pre-run copy. q9b
+(S11-m/m1b-kit.sh) and the second run of q9 (S11-s3/q9c-kit.sh) have
+the same form.
+
+| Mutant | Code | Site | Change | Killer row |
+| --- | --- | --- | --- | --- |
+| q1 | REFUSE_STATE | src/front/check.c:4109 | the one-state guard `if (m->has_state)` is off | `two-states.lang` |
+| q2 | REFUSE_DATA | src/front/check.c:4522 | the family guard of a program declaration is off | `data.lang` |
+| q3 | REFUSE_NAME | src/front/check.c:3054 | name_owner gives NULL for a core name | `core-name.lang` |
+| q4 | REFUSE_REC | src/front/check.c:2593 | the guard on this definition or a later one is off | `self.lang` and `later.lang` (each gives NAME_UNKNOWN) |
+| q5 | REFUSE_MAP | src/front/check.c:2316 | the key type guard of Map is off | `map-key.lang` |
+| q6 | REFUSE_EVENT | src/front/check.c:3473 | the ABI word type guard of an event field is off | `event-field.lang` |
+| q7 | REFUSE_HISTORY_WRITE | src/front/check.c:3796 | the history argument guard is off | `history-set.lang` and 4 other history rows |
+| q8 | REFUSE_AXIOM | src/front/check.c:4528 | the axiom guard is off | `axiom.lang` |
+| q9b | REFUSE_KIT | src/front/check.c:2641 | resolve_head admits a kit type head in guest mode | `kit-type-nat.lang` and 16 other REFUSE_KIT rows |
+| q9 | REFUSE_KIT | src/front/check.c:2646 | literal_ok admits a Nat or word literal in guest mode | `kit-literal-nat-infer.lang` and `kit-literal-word-infer.lang` (new in S11) |
+| q10 | REFUSE_SIG | src/front/check.c:3972 | kernel_sig admits a program declaration of a defined name | `orbit-guest-def.lang`, `orbitproj-guest-def.lang` and `dao-redefine.lang` (each gives REFUSE_NAME) |
+| q11 | REFUSE_CONTRACT | src/front/writer.c:420 | the closed finite carrier guard is off | the `contract_refused` row for test/contract/open-choice.lang (exit 139) |
+
+The log ~/Documents/intent-lang-work/S11-m/m1-mutants.log ends with
+`sources restored` and `status unchanged`. Its line `mutants: 8 of 11
+killed` counts the forecast row only. The table gives the rows that
+fail. rec.lang hits the other REFUSE_REC site (check.c:4531, a def
+rec), so it gives REFUSE_REC under q4. sig-defined.lang gives
+REFUSE_SIG under q10 from another SIG site.
+
+REFUSE_KIT has one emit site (kit_refused) with three callers. In the
+first run q9 survived (gate exit 0): kit-literal-nat.lang and
+kit-literal-word.lang name a kit type (Nat, U256), and the kit head
+check refuses the type before the literal. Under q9b the same two rows
+still give REFUSE_KIT from literal_ok, so the two callers shadow each
+other on these rows. S11 adds two check rows whose text names no kit
+type: kit-literal-nat-infer.lang (`def x : Unit := first (pair unit
+3)`) and kit-literal-word-infer.lang (the same with `5u`). Only
+literal_ok refuses them, and `langc --kit check` gives ok. q9 against
+these rows is killed (S11-s3/q9c-kit.log). REFUSE_NAME has name_owner
+and two domain-only sites; q3 takes out the core-name reason only.
+
+Each refusal code of the checker and the writer now has an intent-lang
+mutant: 60 before S10R, 9 in S10R (f1 .. f9) and 12 in S11 (q1 .. q11
+and q9b, 12 of 12 killed).

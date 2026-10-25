@@ -1,25 +1,22 @@
-# intent-lang specification (draft)
+# intent-lang specification
 
-Status: draft before milestone M0. `intent-lang` is a working name.
-
-Fill each section. The quoted line under each heading says what to write
-there. Delete the quoted line when the section is complete.
+Status: the plan is closed after row S11 (2026-10-25). M0 to M2 are DONE
+(M0 except the probe file, section 8), and M3 is PARTIAL (section 10).
+`intent-lang` is a working name.
 
 ## 1. Purpose
 
-> Write here: what one program describes, what the compiler checks, and what
-> it writes. Name the host and the target. Say that the core types and core
-> operations are only those of `design/DESIGN.md`.
-
-intent-lang is a language for <the domain>. Its type formers are F1 to F19 of
+intent-lang is a language for two parts of one system: a zero-knowledge,
+homomorphically encrypted, multi-party self-referential DAO (the DAO of
+MavenRain/orbit-lang) and the private intent swap protocol that the DAO
+governs. A program declares the DAO and the swap protocol. The compiler
+checks the program and its laws, and writes the EVM bytecode of the
+contract. The host is TinyCC, and the target is EVM bytecode for any EVM
+chain (`docs/PLAN.md` rules R3 and R4). Its type formers are F1 to F19 of
 `formers/FORMERS.md`. Its core data types and core operations are only the
 types and operations of `design/DESIGN.md` (the design).
 
 ## 2. Programs
-
-> Write here: the form of a program and the refusal list. Copy the host
-> forms from `formers/tcc-evm-contract.md`. Add each fixed first definition that the
-> domain needs (for example a size parameter).
 
 A program is a sequence of definitions:
 
@@ -27,8 +24,9 @@ A program is a sequence of definitions:
 def NAME : TYPE := TERM
 ```
 
-The compiler refuses these host forms in a program: <the list from
-`formers/tcc-evm-contract.md`>. It also refuses a definition that uses a core name or
+The compiler refuses these host forms in a program: a `family` declaration
+(REFUSE_DATA), an `axiom` (REFUSE_AXIOM), and a use of the definition
+itself or of a later one (REFUSE_REC). It also refuses a definition that uses a core name or
 a prelude name. Thus a program cannot add a data type, an unproved fact or
 general recursion. Recursion comes only from `fold` and `unfold` (F6, F7).
 The compiler writes the target; a program cannot.
@@ -67,7 +65,8 @@ position `D.here`), `f : D A -> D A` and `g : D A -> E -> D A`, the walk
 seed), the corecursor `c : (A S : Type n) -> (S -> A) -> steps -> S ->
 D A` and the bisimulation principle `DBisim`. The steps and the
 hypotheses of `DBisim` follow the field order. The generated names are
-core names (rule R4): a definition that holds one gives `REFUSE_NAME`.
+reserved core names: a definition that holds one gives `REFUSE_NAME`
+(the name reservation, `docs/PLAN.md` O50).
 The head of a corecursor value is the observation of the seed, and its
 tail is the corecursor at the next seed, by conversion. A state field of
 a cofamily type is a function type, so it gives `REFUSE_STATE`.
@@ -264,82 +263,128 @@ the quote stay host rows (O45).
 
 ## 3. Type formers
 
-> Write here: only the deviations from the formers. Do not copy the forms.
-> Give each former whose status in `formers/tcc-evm-contract.md` is not DONE, and the
-> open item (section 9) that records it.
-
 The type formers are F1 to F19 of `formers/FORMERS.md`. This language uses
-the tcc-evm-contract column of the realization matrix. `formers/tcc-evm-contract.md` gives
-the host form of each former.
+the tcc-evm-contract column of the realization matrix
+(`formers/FORMERS.md:422-438`) and the slice rows S5 to S7 (:442-444).
+`formers/tcc-evm-contract.md` gives the host form of each former (:4,
+:39). Rule R1 admits only cell monads (CM) and their duals (CC) as type
+constructors (slice S3). The EVM cells of the matrix say PLANNED, as in
+the kit record (O26): since K4 the first-order word residual lowers, and
+any other residual gives REFUSE_LOWER (`formers/tcc-evm-contract.md:39-42`).
+The table gives each former that has a deviation.
 
 | ID | Status on tcc-evm-contract | Effect on this language | Open item |
 |---|---|---|---|
-| | | | |
+| F7 | DONE into `List`, with a `Nat` step limit (`formers/FORMERS.md:430`) | `List`, `nil`, `cons` and `unfold` are VIS_CELL: a guest gets REFUSE_CELL. `unfold` has no FreeMon form. The cocell comonads (`cofamily Stream`, S4) give the corecursion. | O24 |
+| F15 | PARTIAL (`formers/FORMERS.md:438`) | Only `domain/domain.lang` declares an indexed family. A program `family` gives REFUSE_DATA. | O37 |
+| F16 to F19 | No matrix row (the headings `formers/FORMERS.md:241`, :269, :299, :336) | The slice rows S5 (Glue, :442), S6 (the index telescope, :443) and S7 (`elim`, :444) are DONE in check and eval. | O26 |
 
 ## 4. Structures
 
-> Write here: the carriers of Monad (F5), fold and unfold (F6, F7) and
-> filter (F8) that the design uses. Name each carrier that the host does not
-> give.
-
-- **Monad**: `pure`, `map`, `bind` on <carriers>.
-- **Algebra**: `fold` on <carriers>. `unfold` on <carriers>, or the reason
-  that there is no `unfold`.
-- **Filterable**: `filter` on <carriers>.
+- **Monad**: `pure`, `map`, `bind` on `Option`, `Sum E` and `List`
+  (`formers/FORMERS.md:428`). The domain adds `fmMap` and `fmBind` on
+  FreeMon (`domain/domain.lang:122`, :127; the bind is the fold `fmFold`)
+  and `encMap`, `encBind` and `encOp2` on `Enc` (:137-141, S5).
+- **Algebra**: `fold` on `Nat`, `List` and each domain family
+  (`formers/FORMERS.md:429`), and `fmFold` on FreeMon
+  (`domain/domain.lang:115`). `unfold` runs into `List` with a `Nat` step
+  limit (:430), but a guest cannot use it (VIS_CELL, O24). The guest
+  corecursion is the cocell comonad `Stream` (S4, section 2).
+- **Filterable**: `filter` on `Option` and `List` (`formers/FORMERS.md:431`).
 
 ## 5. Core types
 
-> Write here (DOMAIN SLOT): only the types of `design/DESIGN.md`. Give each
-> type its meaning in the design and its definition in host forms. Mark each
-> definition that a probe fact forces with "probe-forced".
-
 | Type | Meaning (design section) | Definition |
 |---|---|---|
-| | | |
+| Token, Amount | `design/DESIGN.md:63-64` | `Size` words: `inTok outTok : Size`, and an amount is `Enc Size` (`examples/intent.lang:9`) |
+| `Enc A` | `design/DESIGN.md:42`, :71 | The sealed monad of S5 (`domain/domain.lang:137-150`); exponential ElGamal over BN254 G1 in the host |
+| Intent | `design/DESIGN.md:36`, :76-83 | `def Intent : Type 0` (`examples/intent.lang:6`): a Prod alias with a constructor def and one accessor def for each field (O37) |
+| Quote | `design/DESIGN.md:92-95` | `def Quote : Type 0 := Prod (Enc Size) Size` (`examples/intent.lang:21`) |
+| Transfer | `design/DESIGN.md:99` | `Prod Size (Prod Size (Prod Size Size))` (`examples/intent.lang:26`) |
+| Outcome | `design/DESIGN.md:53`, :98-100 | `Option (Prod Transfer Transfer)` (`examples/intent.lang:34`): `some` is Settled, `none` is Unfilled |
+| `ZKProof W` | `design/DESIGN.md:48`, :83 | `Trunc1 W` (`domain/domain.lang:159`; section 2, :104-116) |
+| Quorum | The parties of the threshold opening (S6) | `domain/domain.lang:149` |
+
+The DAO types (the ballots and `Params`) follow orbit-lang. Section 2
+gives them (Part D, :189-221).
 
 ## 6. Core operations
 
-> Write here (DOMAIN SLOT): only the operations of `design/DESIGN.md`. Give
-> each operation its type and its meaning in the design.
+The Part S signatures below are those of `examples/intent.lang`. Decay
+is the acceptance type `Accept` (the inequality of PLAN section 4.1),
+and `meaning i w t o` is `ZKProof` of that acceptance type. The window
+`w`, elapsed time `t` and opened amounts `a`, `o` are `Size` values.
 
 | Operation | Type | Meaning (design section) |
 |---|---|---|
-| | | |
+| decay (`Accept`) | `(w t so mo o : Size) -> Type 0` | `design/DESIGN.md:32`, :67; `examples/intent.lang:45-50` (no division, O37) |
+| meaning | `(i : Intent) -> (w t o : Size) -> Type 0` | `design/DESIGN.md:38`, :86; `examples/intent.lang:54-55` |
+| settle | `(i : Intent) -> (q : Quote) -> (w t a o : Size) -> Fill i q w t a o -> Outcome` | `design/DESIGN.md:55`, :102; `examples/intent.lang:115-120` (Fill contains the openings and acceptance proof) |
+| decrypt | `(A : Type 0) -> Enc A -> A`, law-only | `design/DESIGN.md:44`, :72; `domain/domain.lang:144` |
+| observe | `(A : Type 0) -> Enc A -> Trunc1 A`, law-only | The privacy path, `design/DESIGN.md:113`; `domain/domain.lang:146` |
+| open | `(A : Type 0) -> Quorum -> Enc A -> A`, law-only | The threshold opening (S6); `domain/domain.lang:150` |
+| verified | `(W : Type 0) -> Transcript W -> ZKProof W`, law-only | `design/DESIGN.md:48`; `domain/domain.lang:161` |
+| encMap, encBind, encOp2 | The `Enc` monad | The homomorphism, `design/DESIGN.md:44`, :111; `domain/domain.lang:137-141` |
+
+The laws of the design (`design/DESIGN.md:109-114`: the auction
+homomorphism, matching, privacy and atomicity) are guest theorems and
+evals (section 2, Part S).
 
 ## 7. Target and instance encoding
 
-> Write here: what the compiler writes. For a JSON target, give the instance
-> rule and the encoding table. For a contract target, give the storage, the
-> entries and the guards. Say how each proof erases.
-
-An instance is a top-level definition whose type is a data type (F14).
+The compiler writes the EVM bytecode of a contract (rule R4). An instance
+is a top-level definition whose type is a data type (F14). A state field
+is a word, a `List T` of words or a `Map K V`. Another shape gives
+REFUSE_LOWER, REFUSE_MAP or REFUSE_STATE (`formers/tcc-evm-contract.md:20-26`).
+An entry is first-order word code: `some (pair STATE OUT)` stores the
+fields, `none` reverts, and a trap reverts with `Trap()` (:27-29). A view
+returns one word (:30). `pay` and `pull` are token CALLs, and `emit` needs
+a named event (:37-38). Section 2 gives the entries of the DAO contract
+(Part S10) and of the reactor contract (Part S10R). `ZKProof` is a def
+over `Trunc1`, and `verified` is law-only: a failed check is a revert of
+the chain, so the codomain is not an `Option` (:104-116).
 
 | Type | Encoding |
 |---|---|
-| | |
+| `Nat`, `Flag`, `U256`, `Addr` | One word |
+| `List T` | Words |
+| `Map K V` | One word for each key |
+| A path, a HIT value, an indexed value, a block value, a proof | Erased (`formers/tcc-evm-contract.md:65-66`, :88-91, :101-104) |
 
 ## 8. Host and target
 
-> Write here: the host, its pinned commit (`PIN`), the facts from
-> `probe/CAPABILITY.md` that set the design, and the check that the compiler
-> runs on its output (for example the axiom report).
+The host is TinyCC: `tcc -v` gives 0.9.28rc (mob 0fb54300). The repo has
+no `PIN` file. The target is EVM bytecode, and the gate runs it on
+go-ethereum `evm` 1.14.12. `probe/CAPABILITY.md` is the kit template that
+S2 ported, and its fields are not filled in. The host facts of the design
+come from the kit slices K2 to K4 (`formers/tcc-evm-contract.md`). The
+checks on the output are in `make -B check` (the header of
+docs/VALIDATION.md): test/evm.sh runs the contracts on `evm`, test/diff.sh
+compares `langc run` with `evm run`, the differential rows compare the
+guest, the host and the EVM, and test/dao.sh and test/reactor.sh check the
+size rows against EIP-170 (24576 runtime bytes) and EIP-3860 (49152
+initcode bytes) and run the two chains.
 
 ## 9. Open items
 
-> Write here: one item for each open question. Number the items O1, O2 and
-> so on. Mark each decision as "RULED YYYY-MM-DD (USER): <the ruling>". Mark
-> each fact that a probe found as "Probe-forced".
-
-- O1. <question>.
+The open items are the O rows of `docs/PLAN.md` section 10 (O1 to O50).
+Each row gives its slice, its ruling (the rulings of section 11, each with
+its USER date) and its state: built, closed in a later slice, or open.
+O48 to O50 are the deviations of S11. The items that stay open after S11
+are the known limits of `docs/STATUS.md`: O16, O28, O29, O30, O31, O37,
+O38, O39 and O45.
 
 ## 10. Milestones
 
-> Write here: the content of each milestone, and a dated status line under
-> the current milestone.
+The plan does not map the kit milestones to its slices (`docs/PLAN.md`
+section 9). The map below follows the content of each milestone.
 
-| Milestone | Content |
-|---|---|
-| M0 | Host probe (`probe/CAPABILITY.md`); the core types construct and check; refusal list; examples and tests |
-| M1 | Core operations |
-| M2 | Queries and reads, or the contract |
-| M3 | Hardening: speed, limits, a checked certificate for the output |
+| Milestone | Slices | Content | Commits (date) | Status |
+|---|---|---|---|---|
+| M0 | S0 to S3 | The kit host and its gate; the kernel port of orbit-lang 2162fb2; the core types construct and check; the refusal list (with REFUSE_CELL, rule R1); examples and tests | 56821a7, 599f84d, aacc8ad, 32c1d13 (2026-10-22) | DONE, except the probe file (section 8) |
+| M1 | S4 to S9 | The core operations: the cocell comonads, `Enc` and `decrypt`, `open`, `ZKProof` and `verified`, Part S and Part D | 4b36026, 1b65dec, 9b99528, ef5abe8 (2026-10-23); c6636f1, 3df9d96 (2026-10-24) | DONE |
+| M2 | S10, S10R | The contract: the DAO contract and the reactor contract | 79e1898, 3aa7361 (2026-10-25) | DONE |
+| M3 | S11 | Hardening: a mutant for each refusal code; the size rows under EIP-170 | The S11 commit (2026-10-25) | PARTIAL: no speed work, no checked certificate for the output |
+
+Status 2026-10-25 (S11 closed): M0 to M2 are DONE and M3 is PARTIAL. The
+plan is closed after row S11.

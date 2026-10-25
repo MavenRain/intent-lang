@@ -439,7 +439,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | DONE (Q-S9-1 .. Q-S9-9 all (a), USER 2026-10-24): `make -B check` EXIT 0 with the S8 counts, except 54 examples (+2, `examples/tally.lang`, `examples/ballot.lang`), 189 check refusals (+1, tally-leak REFUSE_LAW), 231 evals (+18: tally 6, intent 3, ballot 9) and 152 precompile steps (+9, the ballot views); `test/ballottool.c` adds `ballot regressions`; `examples/tally.lang` has tallyEnc, count, hist, lawTallyEnc, lawHist, pass and decide, with no b1 fallback (the FinOf motive probe passed, and lawTallyEnc checks by elim on n); `examples/intent.lang` has Market, settleM, lawWindow, govern and OpensH (O35, O41, O42); the ballot ctx binds the key image (O34); the ballot views are eval rows and precompile steps only (O40); mutants c1, c2, d1, t1, p1, l1, h1 killed (7 of 7, docs/VALIDATION.md) |
 | S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows; the cast entry, the encrypted tally state and the `enact` entry (O40) | DONE (Q-S10-1 .. Q-S10-10 (a), USER 2026-10-24; Q-S10-11 (a) and Q-S10-12 (d), USER 2026-10-25): the DAO contract; the fill is out of S10 by Q-S10-12 (d) (row S10R, O46). `make -B check` EXIT 0 with the S9 counts, except 55 examples (+1, `examples/daokit.lang`, O44), 242 evals (+11, the daokit views), 7 runs (+1, `test/run/daokit.script`), 16 lower refusals and 33 checks (-1 each: `test/lower/env-block.lang` leaves the refusal list) and 59 evm steps (+16: the blocks row of O17 and the 15 calls of daokit.script on the EVM chain); the differential stays at 14 host runs, 14 EVM rows and 28 guest evals. The contract is written by hand from the `ballottool dao` constants, NUMBER is set by `evm t8n` (O36, O43), and the writer does not change. New gate lines: `dao regressions: passed` (`test/ballottool.c`), `dao size rows: runtime 16702 bytes (limit 24576), initcode 16737 bytes (limit 49152)` (O15), `dao gas rows` (printed, not checked; docs/VALIDATION.md) and `dao chain: 33 steps, 0 failures` (`test/dao.sh`); mutants n1, n2, c1 .. c5, e1, e2 killed (9 of 9, docs/VALIDATION.md) |
 | S10R | The reactor contract (Q-S10-12 (d), O46): fillCipher, fillAuth, fillOpen, fillSettle and cancel in their own contract, with the window of the DAO contract (O15, O35, O41); the fill chain rows, the gas rows and the mutants f1 .. f4; the bound of Q-S10-11 (a) (`times` k <= 8, window <= 8u); the randomness proofs stay host rows (O45). The size cause is the inline lowering (each helper inline at each call): fillSettle 8915, fillOpen 5333, fillCipher 4240, fillAuth 1538, cancel 130 runtime bytes. The input is the S10 b5 work in ~/Documents/intent-lang-work/S10-b5/ (reactor.lang, daokit-full.lang, 7 eval rows). Q-S11-5 (c) moves the bound to `times` k <= 16 and window <= 16u | DONE (Q-S11-1 .. Q-S11-4 and Q-S11-8 (a), Q-S11-5 (c), USER 2026-10-25): the reactor contract `examples/reactor.lang` (the entries fillCipher, fillAuth, fillOpen, fillSettle, cancel and `transfer`; the views windowOf, amountOf and closedOf). The DAO pushes the window: enact pays the new window to the reactor address 0x..72656163746f72, and the reactor entry `transfer` sets the window when the caller is the DAO address (Q-S11-2 (a)). fillSettle takes 6 call words (Q-S11-8 (a)). `make check` EXIT 0 with the S10 counts, except 56 examples (+1, `examples/reactor.lang`), 261 evals (+19: 18 reactor rows and daokit enactPay), 8 runs (+1, `test/run/reactor.script`) and 85 evm steps (+26: the 26 calls of reactor.script on the EVM chain, with a stub token, O47). The DAO size rows are now runtime 16883 bytes and initcode 16918 bytes (+181: the pay of enact). New gate lines (`test/reactor.sh`, after `test/dao.sh`): `reactor size rows: runtime 20571 bytes (limit 24576), initcode 20595 bytes (limit 49152)` (O15), `reactor gas rows` (printed, not checked; docs/VALIDATION.md) and `reactor chain: 40 steps, 0 failures` (the DAO, the reactor and the two `asmtool mock` tokens; the storage of each account carries between steps); mutants f1 .. f9 killed (9 of 9, docs/VALIDATION.md) |
-| S11 | Mutants and close | PLANNED |
+| S11 | Mutants and close | DONE (Q-S11-6 (a) and Q-S11-7 (a), USER 2026-10-25): `make -B check` EXIT 0 with the S11 base gate counts (the counts of row S10R), except 191 check refusals (+2) and 24 kit-only refusals (+2): the rows `test/check/kit-literal-nat-infer.lang` and `test/check/kit-literal-word-infer.lang` (q9, O49). Mutants q1 .. q11 and q9b killed (12 of 12, docs/VALIDATION.md "## The refusal mutants (S11)"; q9 killed by the two new rows); the killer of q11 is a `contract_refused` row (O48). The S6 mutant lines go into docs/VALIDATION.md. The close docs: docs/STATUS.md, SPEC.md sections 1 to 10, README.md, and the docs/VALIDATION.md header as the final intent-lang gate. No file in src/ changes (O50). The plan is closed |
 
 ## 10. Open items
 
@@ -589,6 +589,10 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   and small moved to FreeMon (eval row `formers xs` has the FreeMon text).
 - O26 (S3): the F1 to F15 rows of the FORMERS.md matrix stay as the kit
   record; S3 adds the CM row and a CC row (PLANNED, S4).
+  Closed in S11: S4 is DONE with the cocell comonads (the cofamily
+  Stream), so the PLANNED of the CC row is the S3 text. The matrix has no
+  rows for F16 to F19; the slice rows S5 to S7 of formers/FORMERS.md
+  give them.
 - O27 (S3 review): normalize header aliases before the cell-shape check;
   refuse higher-kinded parameters and type indices, which otherwise hide
   non-cell constructors. Admit closed base data as operation labels, as
@@ -620,6 +624,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   (no EIP-2 rule), so (r, n - s, the other v: 28 for 27, 27 for 28) is a
   second signature of the same signer (secptool row `high s`). S8 replay
   keys must not be the signature words (use the intent hash or a nonce).
+  Closed in S11: closed on the guest in S8 (the row sameKey, mutant s1).
 - O34 (S7, Q-S7-7): the ballot ctx is a free word. S9 binds it to the
   bLSAG key image; else a copied ballot verifies under a second key image.
   Closed in S9: ballotCtx in examples/ballot.lang is the hash chain from
@@ -755,6 +760,29 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   of the program, so the log rows of the EVM and the guest would not
   agree. test/reactor.sh runs the pulls on the `asmtool mock` tokens and
   checks their balance slots.
+- O48 (S11, DEVIATION 1): the killer of the mutant q11 (REFUSE_CONTRACT,
+  src/front/writer.c:420) is the `contract_refused` row of test/gate.sh
+  for test/contract/open-choice.lang, not a check row. The contract
+  writer gives REFUSE_CONTRACT, not the checker, so a check refusal file
+  cannot give that code.
+- O49 (S11, DEVIATION 2): S11 adds 2 check rows and the mutant q9b; the
+  plan of S11 had no new check row. REFUSE_KIT has one emit site
+  (kit_refused) with three callers. On the rows kit-literal-nat.lang and
+  kit-literal-word.lang, the kit head check (resolve_head) and literal_ok
+  shadow each other: each one refuses the row when the other is off, so
+  q9 survived its first run. The new rows kit-literal-nat-infer.lang
+  (`def x : Unit := first (pair unit 3)`) and kit-literal-word-infer.lang
+  (the same with `5u`) name no kit type, so only literal_ok refuses them
+  (+2 check refusals, +2 kit-only refusals). q9 is killed by the two new
+  rows. q9b takes out the kit head check, and 17 REFUSE_KIT rows kill it.
+- O50 (S11, DEVIATION 3): the checker gives REFUSE_NAME with the text
+  "(rule R4)" (src/front/check.c:3076, :3402, :3405). Comments in src/
+  and test/ (for example check.c:225, contract.c:3 and
+  test/check/prop-def.lang:1), the S2 item of docs/STATUS.md and three
+  lines of this plan also call the name reservation "rule R4". That is
+  the rule number of orbit-lang. In this plan R4 is the EVM target (:22).
+  S11 changes no file in src/, so this text stays. SPEC.md states the
+  name reservation without a rule number.
 
 ## 11. Questions for the USER (S1, S2)
 
