@@ -1,7 +1,7 @@
 # intent-lang specification
 
-Status: the plan is closed after row S11 (2026-10-25). M0 to M2 are DONE
-(M0 except the probe file, section 8), and M3 is PARTIAL (section 10).
+Status: the plan is closed after row S11 (2026-10-25), and row P1 filled
+the probe file. M0 to M2 are DONE, and M3 is PARTIAL (section 10).
 `intent-lang` is a working name.
 
 ## 1. Purpose
@@ -355,8 +355,8 @@ the chain, so the codomain is not an `Option` (:104-116).
 
 The host is TinyCC: `tcc -v` gives 0.9.28rc (mob 0fb54300). The repo has
 no `PIN` file. The target is EVM bytecode, and the gate runs it on
-go-ethereum `evm` 1.14.12. `probe/CAPABILITY.md` is the kit template that
-S2 ported, and its fields are not filled in. The host facts of the design
+go-ethereum `evm` 1.14.12. `probe/CAPABILITY.md` has the host probe of
+row P1 (2026-10-25, at b28c283). The host facts of the design
 come from the kit slices K2 to K4 (`formers/tcc-evm-contract.md`). The
 checks on the output are in `make -B check` (the header of
 docs/VALIDATION.md): test/evm.sh runs the contracts on `evm`, test/diff.sh
@@ -381,10 +381,10 @@ section 9). The map below follows the content of each milestone.
 
 | Milestone | Slices | Content | Commits (date) | Status |
 |---|---|---|---|---|
-| M0 | S0 to S3 | The kit host and its gate; the kernel port of orbit-lang 2162fb2; the core types construct and check; the refusal list (with REFUSE_CELL, rule R1); examples and tests | 56821a7, 599f84d, aacc8ad, 32c1d13 (2026-10-22) | DONE, except the probe file (section 8) |
+| M0 | S0 to S3 | The kit host and its gate; the kernel port of orbit-lang 2162fb2; the core types construct and check; the refusal list (with REFUSE_CELL, rule R1); examples and tests | 56821a7, 599f84d, aacc8ad, 32c1d13 (2026-10-22) | DONE (P1 filled the probe file) |
 | M1 | S4 to S9 | The core operations: the cocell comonads, `Enc` and `decrypt`, `open`, `ZKProof` and `verified`, Part S and Part D | 4b36026, 1b65dec, 9b99528, ef5abe8 (2026-10-23); c6636f1, 3df9d96 (2026-10-24) | DONE |
 | M2 | S10, S10R | The contract: the DAO contract and the reactor contract | 79e1898, 3aa7361 (2026-10-25) | DONE |
-| M3 | S11 | Hardening: a mutant for each refusal code; the size rows under EIP-170 | The S11 commit (2026-10-25) | PARTIAL: no speed work, no checked certificate for the output |
+| M3 | S11 | Hardening: a mutant for each refusal code; the size rows under EIP-170 | b28c283 (2026-10-25) | PARTIAL: no speed work, no checked certificate for the output |
 
-Status 2026-10-25 (S11 closed): M0 to M2 are DONE and M3 is PARTIAL. The
-plan is closed after row S11.
+Status 2026-10-25 (S11 closed, P1 filled the probe file): M0 to M2 are
+DONE and M3 is PARTIAL. The plan is closed after row S11.

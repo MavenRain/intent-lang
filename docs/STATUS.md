@@ -3,8 +3,8 @@
 The build implements the milestones M0 to M2 and a part of M3 (SPEC.md
 section 10). The slices S2 to S10R built the language, the DAO contract
 and the reactor contract. S11 killed the refusal mutants (12 of 12) and
-wrote the close docs, and the plan is closed after it. M0 is complete
-except the probe file (see Remaining M0 work). M3 has no speed work and
+wrote the close docs, and the plan is closed after it. M0 is complete:
+P1 filled the probe file (docs/PLAN.md row P1). M3 has no speed work and
 no checked certificate for the output. The final gate is the header of
 docs/VALIDATION.md.
 
@@ -145,10 +145,7 @@ docs/VALIDATION.md.
 
 ## Remaining M0 work
 
-1. `probe/CAPABILITY.md` is the kit template. S2 ported it from
-   orbit-lang 2162fb2, and its fields are not filled in. It needs a
-   probe run of the TinyCC host. No gate script reads it, and the plan
-   is closed after row S11, so no slice holds this item.
+None. P1 filled `probe/CAPABILITY.md` (docs/PLAN.md row P1).
 
 ## Known limits
 
