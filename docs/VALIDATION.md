@@ -551,7 +551,8 @@ of the writer gate and does not change). Its entries are castSig,
 castSlot, castSeal and enact, and its views are tallyWord, windowNow,
 castCount and stageOf. `langc --kit build examples/daokit.lang` gives
 16737 initcode bytes (limit 49152, EIP-3860) and 16702 runtime bytes
-(limit 24576, EIP-170). The DAO part and the reactor part in one
+(limit 24576, EIP-170) in S10; with the pay of enact (S10R) it gives
+16918 and 16883. The DAO part and the reactor part in one
 contract have 37038 runtime bytes (PLAN O15, Q-S10-12).
 
 The host data. `build/ballottool dao` prints each constant of
@@ -570,7 +571,7 @@ passed`.
 test/dao.sh is the chain test. It reads the words at run time from
 `build/ballottool dao` and `build/ballottool words` (the script has no
 hex words). It deploys the contract and prints `dao size rows: runtime
-16702 bytes (limit 24576), initcode 16737 bytes (limit 49152)` (a size
+16883 bytes (limit 24576), initcode 16918 bytes (limit 49152)` (a size
 over a limit is a FAIL row), then runs 33 steps: voter 0 castSig, a
 castSeal before castSlot reverts, castSlot 0 and 1 with the stageOf rows
 1, 3 and 7, castSeal, a second castSig of voter 0 reverts (the null is
@@ -607,7 +608,7 @@ so that a t8n step can come before an `evm run` step. The gasUsed of
 result.json includes the intrinsic gas, so the gas rows do not use it.
 
 Gas (`dao gas rows`, test/dao.sh, measured on 2026-10-25 at 3df9d96 with
-the S10 work, geth `evm` 1.14.12). Each value is the execution gas.
+the S10 work and again with the S10R work, geth `evm` 1.14.12). Each value is the execution gas.
 deploy: `evm run --create --statdump` prints the gas left of 30000000,
 so the row is 30000000 less the print (it includes the code deposit, 200
 gas for each runtime byte). castSig, castSlot and castSeal: `evm run
@@ -615,16 +616,18 @@ gas for each runtime byte). castSig, castSlot and castSeal: `evm run
 0. enact: the gasUsed of the t8n trace summary at BLOCK 11. The first
 castSeal writes the tally words and costs more than a later castSeal.
 The forecast of castSig was about 257800 (81000 + 8 x 22100). The gate
-does not check the gas.
+does not check the gas. S10R changes two rows: deploy (3410413 in
+S10) and enact (117808 in S10; enact now pays the window to the
+reactor).
 
 | Call | Gas |
 | --- | --- |
-| deploy | 3410413 |
+| deploy | 3446661 |
 | castSig | 291276 |
 | castSlot | 96024 |
 | castSeal (first) | 283298 |
 | castSeal (later) | 129398 |
-| enact | 117808 |
+| enact | 143337 |
 
 The S10 build killed 9 of 9 mutants, as recorded in
 ~/Documents/intent-lang-work/S10-mutants.out (each rebuild is `make
@@ -639,3 +642,123 @@ c5 (castSeal without the castEnd test; dao step 17, and step 18), e1
 (enact without the opening check; dao step 30, and step 31) and e2
 (enact without the castEnd test; dao step 29, and step 31). The mutants
 f1 .. f4 of the fill go to row S10R.
+
+## The reactor contract (S10R)
+
+S10R closes with the reactor contract (row S10R and O46 of
+docs/PLAN.md). examples/reactor.lang is a kit file (Q-S11-4 (a)). Its
+entries are fillCipher, fillAuth, fillOpen, fillSettle, cancel and
+transfer, and its views are windowOf, amountOf and closedOf. The state
+is the window (6u at init), the key marks, the fill words and the
+addresses.
+
+The window route (Q-S11-2 (a)). The kit has no general call, so the DAO
+pushes the window. enact of examples/daokit.lang outputs one `pay
+reactor reactor w`, with w the new window (a tie pays the old window),
+and the reactor entry `transfer (to : Addr) (amount : U256)` sets the
+window to amount when the caller is the DAO address (a contract
+constant, 0x..7265636569766572, the receiver of test/evmchain.sh);
+another caller reverts. The reactor address is
+0x0000000000000000000000000072656163746f72. The probe of S10R r0: the
+pay CALL selector and the entry selector are both a9059cbb
+(`transfer(address,uint256)`), and an entry that stops with no return
+data passes the CALL check of the pay. The eval row daokit enactPay
+gives the pay, and test/run/daokit.out has it under `15 enact ok`.
+
+Sizes. `langc --kit build examples/reactor.lang` gives 20595 initcode
+bytes (limit 49152, EIP-3860) and 20571 runtime bytes (limit 24576,
+EIP-170; 4005 under). With the 16-step times (Q-S11-5 (c)) and
+fillSettle on the stored words, the runtime was 30185 (the size stop;
+fillSettle alone 18584). By Q-S11-8 (a), fillSettle takes the 6 call
+words h o so mo st amt and checks each one time against fillWord, so
+the inline copies of times are call-data loads. The DAO with the pay is
+16883 runtime bytes and 16918 initcode bytes (S10: 16702 and 16737).
+
+The eval rows (FILE reactor, 18): fillMin some 4u, fillShort none,
+fillLow none, fillDone some 1u, fillReplay none, cancelOwner none,
+cancelOther some 0u, windowPush some 4u, windowOther none, times9 63u,
+times16 112u, times17 112u, fillCap none (window 17u, more than 16u)
+and fillWord8 none (the settle of fillDone with so 9u). The price
+boundary rows risingLow, risingExact, risingStart and risingEnd give
+0, 1, 1 and 0. With daokit
+enactPay, evals is 261.
+
+test/run/reactor.script (26 calls) runs on the guest (`langc run`,
+test/run/reactor.out) and on the EVM chain differential of test/evm.sh,
+so runs is 8 and evm steps is 85. The rows: fillCipher, fillAuth and the
+3 openings of nonce 7 at BLOCK 0; windowOf 6u; the settle of o 6 at
+BLOCK 102 (t 2) reverts (short at window 6u); a transfer by the DAO
+address sets 4u; windowOf 4u; o 3 at BLOCK 108 (t 8 > 4) reverts; o 6
+at BLOCK 102 settles (2 pulls and Settled); its replay reverts; closedOf
+1u; a cancel of nonce 8 by 0x..aa leaves it open (closedOf 0u), a cancel
+by the owner closes it (closedOf 1u, then fillAuth of nonce 8 reverts);
+a transfer by 0x..aa reverts. Three attempts to replace the opened
+amounts by 3 + q, 8 + q and 4 + q revert, where q is the BN254 subgroup
+order; amountOf still returns 3, 8 and 4. The settles are t8n steps from the key
+address (the solver). The EVM side has a stub token at 0x..ee and 0x..ef
+(PLAN O47): the CALL of a pull needs code at the token address, and the
+logs of the mock are not events of the program.
+
+test/reactor.sh is the chain test of the two contracts (Q-S11-4 (a)). It
+prints `reactor size rows: runtime 20571 bytes (limit 24576), initcode 20595 bytes (limit 49152)` (a size over a limit is a FAIL row) and the gas rows,
+then runs one chain on 4 accounts: the DAO at the receiver address, the
+reactor, and the `build/asmtool mock` token at 0x..ee (inTok; the owner
+has 100) and 0x..ef (outTok; the key address has 100) (Q-S11-3 (a)). The
+storage of each account carries to the next step. The fill of nonce 7
+and its openings, three noncanonical opening rejections and three
+amountOf checks, the short settle and a transfer by a voter (revert)
+come first; then voters 0, 1 and 2 cast, and enact (m 2) at BLOCK 11
+sets the window 4 and pays it to the reactor (windowOf 4 at step 28);
+the settle of o 6 passes (step 30), o 3 and the replay revert, closedOf
+1 (step 32), the cancel rows of nonce 8; then the balance slots of the
+mocks must show the two pulls. The last line is `reactor chain: 40 steps, 0 failures`.
+
+Gas (`reactor gas rows`, test/reactor.sh, measured on 2026-10-25 with
+the S10R work and staged review fixes, geth `evm` 1.14.12). Each value is the execution gas, as
+in the DAO table: deploy is the genesis gas limit less the gas left;
+the BLOCK 0 calls are `evm run --statdump`; enact (BLOCK 11) and
+fillSettle (BLOCK 102) are the gasUsed of the t8n trace summary. The
+enact row of this chain is not the enact row of `dao gas rows`: the two
+chains have a different prestate. The gate does not check the gas.
+
+| Call | Gas |
+| --- | --- |
+| deploy | 4141001 |
+| fillCipher | 302614 |
+| fillAuth | 167097 |
+| fillOpen | 144084 |
+| enact (with the pay) | 126237 |
+| fillSettle | 123259 |
+| cancel | 23592 |
+
+The S10R build killed 9 of 9 mutants, as recorded in
+~/Documents/intent-lang-work/S10R-s4/r4-mutants.log (each mutant is one
+`sd -F` replace that hits once in examples/reactor.lang, f6 in
+examples/daokit.lang; no src/ mutant, so no rebuild): f1 (fillSettle
+without minOf; eval fillLow none -> some), f2 (the window as the constant
+6u; fillDone some 1u -> none), f3 (no key mark; fillReplay none -> some,
+and fillDone some 0u), f4 (cancel keys a call word in place of the
+caller; cancelOther some 0u -> none), f5 (transfer without the caller
+check; windowOther none -> some), f6 (enact without the pay;
+test/reactor.sh windowOf step 22 6 for 4, fillSettle step 24 revert for
+ok, closedOf step 26 0 for 1, and the mock balances), f7 (fillSettle
+without the 16u cap; fillCap none -> some), f8 (times without the 9u ..
+16u steps; times9, times16 and times17 56u) and f9 (fillSettle without
+the so check; fillWord8 none -> some). test/evm.sh cannot kill a source
+mutant: it compares the EVM with `langc run` of the same source, so both
+sides move. Thus the killers of f4 are cancelOther, row 16 of
+test/run/reactor.out (closedOf 0u) and the same row of test/reactor.sh.
+
+
+Staged review (2026-10-25). fillOpen rejects amounts at or above the
+BN254 subgroup order q =
+21888242871839275222246405745257275088548364400416034343698204186575808495617.
+Previously the proof for amount 3 also opened 3 + q, which could then
+be used as the input token transfer amount. The run script checks all
+three amount aliases and the unchanged stored amounts; test/reactor.sh
+checks the same rejections before settlement with the two mock tokens.
+The price shortcut now requires the offer to reach both endpoints.
+Previously acceptW 4 2 4 8 4 accepted 4 although rule 4.1 requires 6.
+The four rising price eval rows cover the rejected low offer, the exact
+midpoint, the start and the end. The original mutant step references
+above describe the pre-review chain.

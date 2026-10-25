@@ -374,8 +374,15 @@ def castSeal : (env : Env) -> (s : State) -> (ix iy ax ay bx by z : U256) -> Opt
           none)
         none)
 
+-- The reactor contract (examples/reactor.lang, S10R): its entry transfer sets its window when the caller is
+-- this DAO (Q-S11-2 (a)). The window after enact: the proposal when yes = m > no = casts - m.
+def reactor : Addr := 0x0000000000000000000000000072656163746f72
+def nextWindow : (s : State) -> (m : U256) -> U256 :=
+  fun (s : State) (m : U256) => flagIf (u256Le m (u256Sub (casts s) m)) (window s) (proposal s)
+
 -- Entry enact (15 words): block > castEnd, not enacted, m <= casts, the opening of T0 (two DLEQ shares of {1, 2}),
--- then the window moves to the proposal when yes = m > no = casts - m, and enacted is set.
+-- then the window moves to nextWindow, enacted is set, and one pay pushes the window to the reactor (the
+-- ERC-20 transfer selector; the to word is not read).
 def enact : (env : Env) -> (s : State) -> (d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) -> Option (Prod State (List Out)) :=
   fun (env : Env) (s : State) (d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) =>
     flagIf (u256Le (block env) (castEnd s))
@@ -387,9 +394,8 @@ def enact : (env : Env) -> (s : State) -> (d1x d1y a1x a1y b1x b1y z1 d2x d2y a2
                 d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m)
             (some (pair (makeState (used s) (pend s) (stage s)
               (t0ax s) (t0ay s) (t0bx s) (t0by s) (t1ax s) (t1ay s) (t1bx s) (t1by s)
-              (casts s) (castEnd s) (proposal s)
-              (flagIf (u256Le m (u256Sub (casts s) m)) (window s) (proposal s))
-              flagYes (keys s) (fills s)) nil))
+              (casts s) (castEnd s) (proposal s) (nextWindow s m)
+              flagYes (keys s) (fills s)) (cons (pay reactor reactor (nextWindow s m)) nil)))
             none)
           none))
 
@@ -441,4 +447,5 @@ def sealLate : Option (Prod State (List Out)) := bind v0slots (fun (r : Prod Sta
 def enactEarly : Option (Prod State (List Out)) := bind v2 (fun (r : Prod State (List Out)) => openWith 2u e0 (first r))
 def enactM3 : Option (Prod State (List Out)) := bind v2 (fun (r : Prod State (List Out)) => openWith 3u e11 (first r))
 def windowAfter : Option U256 := map (fun (q : Prod State (List Out)) => windowNow e11 (first q)) (bind v2 (fun (r : Prod State (List Out)) => openWith 2u e11 (first r)))
+def enactPay : Option (List Out) := map (fun (q : Prod State (List Out)) => second q) (bind v2 (fun (r : Prod State (List Out)) => openWith 2u e11 (first r)))
 def enactTwice : Option (Prod State (List Out)) := bind (bind v2 (fun (r : Prod State (List Out)) => openWith 2u e11 (first r))) (fun (q : Prod State (List Out)) => openWith 2u e11 (first q))

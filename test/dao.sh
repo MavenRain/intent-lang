@@ -22,6 +22,7 @@ mkdir -p "$tmp"
 prog=examples/daokit.lang
 voter=0x00000000000000000000000000000000000000aa
 numbered=1
+reactorAlloc || { echo "FAIL dao: the reactor runtime"; exit 1; }
 { build/ballottool dao && build/ballottool words; } >"$tmp/words" || { echo "FAIL dao: ballottool"; exit 1; }
 
 # ws PREFIX NAMES...: the words PREFIX.NAME of tmp/words as `langc run`
@@ -67,6 +68,7 @@ call() {
     fail=$((fail + 1))
     return
   fi
+  own
   case $result in
     "out "*) _hex=${result#out }
       [ ${#_hex} -eq 64 ] && result="out $(hexnorm "$_hex")" ;;

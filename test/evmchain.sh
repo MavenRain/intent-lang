@@ -6,6 +6,8 @@
 # The receiver of each call, and the config of each prestate: each fork at
 # block 0 and shanghaiTime 0 (PUSH0).
 receiver=0000000000000000000000007265636569766572
+# The reactor of examples/reactor.lang (S10R): "reactor" as an address.
+reactor=0000000000000000000000000072656163746f72
 config='{"chainId":1,"homesteadBlock":0,"eip150Block":0,"eip155Block":0,"eip158Block":0,"byzantiumBlock":0,"constantinopleBlock":0,"petersburgBlock":0,"istanbulBlock":0,"berlinBlock":0,"londonBlock":0,"mergeNetsplitBlock":0,"shanghaiTime":0,"terminalTotalDifficulty":0,"terminalTotalDifficultyPassed":true}'
 # The t8n route (S10, O36): a chain that sets numbered=1 runs each step with
 # BLOCK > 0 on `evm t8n`, from the address key of the secret key below.
@@ -124,6 +126,31 @@ want() {
 slots() {
   awk -F'"' 'NF >= 5 && length($2) == 66 && substr($2, 1, 2) == "0x" { print substr($2, 3), $4 }' "$1" >"$tmp/raw"
   awk '{ v = tolower($2); sub(/^0+/, "", v); print $1, (v == "" ? "0" : v) }' "$tmp/raw" | sort >"$tmp/got"
+}
+
+# acct ADDR: the storage rows `SLOT VALUE` of the account ADDR in tmp/dump.
+acct() {
+  awk -F'"' -v a="0x$1" 'NF == 3 && length($2) == 42 { p = (tolower($2) == a); next }
+    p && NF >= 5 && length($2) == 66 && substr($2, 1, 2) == "0x" { print substr($2, 3), $4 }' "$tmp/dump"
+}
+
+# norm: the rows `SLOT VALUE` of stdin with VALUE as hexnorm, sorted.
+norm() { awk '{ v = tolower($2); sub(/^0+/, "", v); print $1, (v == "" ? "0" : v) }' | sort; }
+
+# own: tmp/raw and tmp/got keep the storage rows of the receiver only. After a
+# step with a set alloc they hold the rows of all accounts (S10R).
+own() {
+  acct "$receiver" >"$tmp/raw"
+  norm <"$tmp/raw" >"$tmp/got"
+}
+
+# reactorAlloc: alloc gets the runtime of examples/reactor.lang at 0x$reactor
+# (S10R, Q-S11-2 (a)). enact of examples/daokit.lang pays the reactor the
+# window, and a CALL to an address with no code reverts. The reactor storage
+# is empty at each step (window 0); its entry transfer writes it.
+reactorAlloc() {
+  _rt=$(build/langc --kit build examples/reactor.lang --runtime) || return 1
+  alloc=",\"0x$reactor\":{\"balance\":\"0x0\",\"code\":\"0x$_rt\",\"storage\":{}}"
 }
 
 # genesis TIME ALLOC: tmp/pre.json gets a prestate at TIMESTAMP TIME with the

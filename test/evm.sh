@@ -1,7 +1,7 @@
 #!/bin/sh
 # The chain gate (slice K4c, O-s11-1). For each call script below, deploy the
 # program with `evm run --create`, then do one `evm run --prestate --dump`
-# step for each call of the script (a t8n step at BLOCK > 0 for blocks.script and daokit.script, S10). After each step, the storage must equal
+# step for each call of the script (a t8n step at BLOCK > 0 for blocks.script and daokit.script, S10, and reactor.script, S10R). After each step, the storage must equal
 # the state that `langc run` prints for the calls up to that step, and the
 # result must agree with the result of the call: ok, revert (`none`) or trap
 # (the Trap() selector). A view call must return the 32-byte word of the view
@@ -70,6 +70,7 @@ chain() {
       fail=$((fail + 1))
       return
     fi
+    [ -z "${alloc:-}" ] || own
     case $result in
       "out "*) _hex=${result#out }
         [ ${#_hex} -eq 64 ] && result="out $(hexnorm "$_hex")" ;;
@@ -131,9 +132,25 @@ chain test/same-state.lang test/same-state.script
 # test/run/blocks.script (S10, O36): its call is at NOW 1 and BLOCK 42 from the
 # t8n key address, a t8n step at NUMBER 42. test/run/daokit.script (S10 b6): the
 # DAO casts at BLOCK 0, the late castSeal and enact at BLOCK 11 (t8n steps).
+# enact pays the reactor (S10R): the daokit chain has the reactor runtime in
+# its prestate. test/run/reactor.script (S10R): the settles at BLOCK 102 and
+# 108 are t8n steps. The settle pulls call inTok 0x..ee and outTok 0x..ef. A
+# CALL with empty return data to an address with no code reverts (S10R s4),
+# thus the prestate has at each token address the code $yes: it returns the
+# word 1 (true) for each call (PUSH1 1, PUSH0, MSTORE, PUSH1 32, PUSH0,
+# RETURN), with no storage and no logs. test/reactor.sh checks the pulls on
+# the asmtool mock.
+yes=60015f5260205ff3
 numbered=1
 chain examples/blocks.lang test/run/blocks.script
+reactorAlloc || { echo "FAIL evm: the reactor runtime"; fail=$((fail + 1)); }
 chain examples/daokit.lang test/run/daokit.script
+alloc=
+for _t in ee ef; do
+  alloc="$alloc,\"0x$(pad "$_t" | cut -c25-)\":{\"balance\":\"0x0\",\"code\":\"0x$yes\",\"storage\":{}}"
+done
+chain examples/reactor.lang test/run/reactor.script
+alloc=
 numbered=0
 
 rm -rf "$tmp"

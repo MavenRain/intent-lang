@@ -124,6 +124,23 @@ of Q-S2-1 and Q-S3-1 to Q-S3-4 (section 11).
   the intent and quote randomness proofs stay host rows (a new O row); the
   host data is `ballottool dao` with `dao regressions`; the chain test is
   test/dao.sh and test/run/dao.script on the guest and the EVM.
+- Q-S11-1 .. Q-S11-4, Q-S11-6, Q-S11-7 (a) and Q-S11-5 (c), USER
+  2026-10-25 (the S11 kickoff; the survey is
+  ~/Documents/intent-lang-work/S11-survey.md). S10R comes before S11,
+  and S11 closes the plan with the reactor in it. The DAO pushes the
+  window at enact: one `pay` to the reactor address, and the reactor
+  entry `transfer (to : Addr) (amount : U256)` sets window when the
+  caller is the DAO address (a probe first checks the selector). The
+  mock tokens are the `asmtool mock` runtime at 0x..ee and 0x..ef. S10R
+  adds examples/reactor.lang, test/run/reactor.script and
+  test/reactor.sh (`reactor size rows`, `reactor gas rows` and `reactor
+  chain`). `times` goes to k <= 16, and fillSettle reverts when the
+  window is more than 16u (Q-S11-5 (c), in place of the 8u of Q-S10-11
+  (a)). S11 adds one mutant for each of the 11 refusal codes that have
+  no intent-lang mutant, and writes all the close docs.
+- Q-S11-8 (a), USER 2026-10-25 (the S10R size stop): fillSettle takes
+  so, mo, start and amtIn as call words, each checked one time against
+  fillWord.
 
 Builder calls (NOT ruled; section 10 gives each one; section 11 gives the
 questions that the USER ruled in S1):
@@ -421,7 +438,7 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 | S8 | Part S: Intent, Bundle, Quote, decay, meaning, settle, cancel, and the laws of section 5 as guest theorems and evals; the guest side of O17 (`Env.block` in the prelude, the evaluator, plus the complete script and harness migration) | DONE: `make -B check` EXIT 0 with the S7 counts, except 52 examples (+3, `examples/intent.lang`, `examples/intentsig.lang`, `examples/blocks.lang`), 188 check refusals (+2: intent-decrypt REFUSE_LAW, intent-state REFUSE_STATE), 213 evals (+25), 6 runs (+1, `test/run/blocks.script`), 11 run refusals (+1, a bad BLOCK) and 17 lower refusals (+1, env-block REFUSE_LOWER); `Env` is `makeEnv now block caller` in the prelude, the evaluator and each script and harness (O17); `test/fronttool.c` has 2 new rows; `test/secptool.c` signs a vector in the low and the high form; records are Prod aliases (O37), the view is a tuple (O38), the intent hash takes `cipherDigest` (O39); mutants e1, e2, e2b, l1, g1 to g5, s1 to s4 killed (13 of 13, docs/VALIDATION.md) |
 | S9 | Part D: encrypted ballots, `tallyEnc`, the tally law, Params and the link of 3.3 | DONE (Q-S9-1 .. Q-S9-9 all (a), USER 2026-10-24): `make -B check` EXIT 0 with the S8 counts, except 54 examples (+2, `examples/tally.lang`, `examples/ballot.lang`), 189 check refusals (+1, tally-leak REFUSE_LAW), 231 evals (+18: tally 6, intent 3, ballot 9) and 152 precompile steps (+9, the ballot views); `test/ballottool.c` adds `ballot regressions`; `examples/tally.lang` has tallyEnc, count, hist, lawTallyEnc, lawHist, pass and decide, with no b1 fallback (the FinOf motive probe passed, and lawTallyEnc checks by elim on n); `examples/intent.lang` has Market, settleM, lawWindow, govern and OpensH (O35, O41, O42); the ballot ctx binds the key image (O34); the ballot views are eval rows and precompile steps only (O40); mutants c1, c2, d1, t1, p1, l1, h1 killed (7 of 7, docs/VALIDATION.md) |
 | S10 | The contract of section 7: writer, `Env.block` lowered to NUMBER (O17), guest/host/EVM differential with the block number in the prestate, gas and size rows; the cast entry, the encrypted tally state and the `enact` entry (O40) | DONE (Q-S10-1 .. Q-S10-10 (a), USER 2026-10-24; Q-S10-11 (a) and Q-S10-12 (d), USER 2026-10-25): the DAO contract; the fill is out of S10 by Q-S10-12 (d) (row S10R, O46). `make -B check` EXIT 0 with the S9 counts, except 55 examples (+1, `examples/daokit.lang`, O44), 242 evals (+11, the daokit views), 7 runs (+1, `test/run/daokit.script`), 16 lower refusals and 33 checks (-1 each: `test/lower/env-block.lang` leaves the refusal list) and 59 evm steps (+16: the blocks row of O17 and the 15 calls of daokit.script on the EVM chain); the differential stays at 14 host runs, 14 EVM rows and 28 guest evals. The contract is written by hand from the `ballottool dao` constants, NUMBER is set by `evm t8n` (O36, O43), and the writer does not change. New gate lines: `dao regressions: passed` (`test/ballottool.c`), `dao size rows: runtime 16702 bytes (limit 24576), initcode 16737 bytes (limit 49152)` (O15), `dao gas rows` (printed, not checked; docs/VALIDATION.md) and `dao chain: 33 steps, 0 failures` (`test/dao.sh`); mutants n1, n2, c1 .. c5, e1, e2 killed (9 of 9, docs/VALIDATION.md) |
-| S10R | The reactor contract (Q-S10-12 (d), O46): fillCipher, fillAuth, fillOpen, fillSettle and cancel in their own contract, with the window of the DAO contract (O15, O35, O41); the fill chain rows, the gas rows and the mutants f1 .. f4; the bound of Q-S10-11 (a) (`times` k <= 8, window <= 8u); the randomness proofs stay host rows (O45). The size cause is the inline lowering (each helper inline at each call): fillSettle 8915, fillOpen 5333, fillCipher 4240, fillAuth 1538, cancel 130 runtime bytes. The input is the S10 b5 work in ~/Documents/intent-lang-work/S10-b5/ (reactor.lang, daokit-full.lang, 7 eval rows) | PLANNED |
+| S10R | The reactor contract (Q-S10-12 (d), O46): fillCipher, fillAuth, fillOpen, fillSettle and cancel in their own contract, with the window of the DAO contract (O15, O35, O41); the fill chain rows, the gas rows and the mutants f1 .. f4; the bound of Q-S10-11 (a) (`times` k <= 8, window <= 8u); the randomness proofs stay host rows (O45). The size cause is the inline lowering (each helper inline at each call): fillSettle 8915, fillOpen 5333, fillCipher 4240, fillAuth 1538, cancel 130 runtime bytes. The input is the S10 b5 work in ~/Documents/intent-lang-work/S10-b5/ (reactor.lang, daokit-full.lang, 7 eval rows). Q-S11-5 (c) moves the bound to `times` k <= 16 and window <= 16u | DONE (Q-S11-1 .. Q-S11-4 and Q-S11-8 (a), Q-S11-5 (c), USER 2026-10-25): the reactor contract `examples/reactor.lang` (the entries fillCipher, fillAuth, fillOpen, fillSettle, cancel and `transfer`; the views windowOf, amountOf and closedOf). The DAO pushes the window: enact pays the new window to the reactor address 0x..72656163746f72, and the reactor entry `transfer` sets the window when the caller is the DAO address (Q-S11-2 (a)). fillSettle takes 6 call words (Q-S11-8 (a)). `make check` EXIT 0 with the S10 counts, except 56 examples (+1, `examples/reactor.lang`), 261 evals (+19: 18 reactor rows and daokit enactPay), 8 runs (+1, `test/run/reactor.script`) and 85 evm steps (+26: the 26 calls of reactor.script on the EVM chain, with a stub token, O47). The DAO size rows are now runtime 16883 bytes and initcode 16918 bytes (+181: the pay of enact). New gate lines (`test/reactor.sh`, after `test/dao.sh`): `reactor size rows: runtime 20571 bytes (limit 24576), initcode 20595 bytes (limit 49152)` (O15), `reactor gas rows` (printed, not checked; docs/VALIDATION.md) and `reactor chain: 40 steps, 0 failures` (the DAO, the reactor and the two `asmtool mock` tokens; the storage of each account carries between steps); mutants f1 .. f9 killed (9 of 9, docs/VALIDATION.md) |
 | S11 | Mutants and close | PLANNED |
 
 ## 10. Open items
@@ -465,9 +482,17 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   EIP-170, the split goes back to the USER.
   Closed in S10 for the DAO contract: runtime 16702 bytes (limit 24576)
   and initcode 16737 bytes (limit 49152), the `dao size rows` line of
-  test/dao.sh. The full measure (the DAO part and the reactor part in one
+  test/dao.sh. With the pay of enact (S10R) the DAO is runtime 16883 bytes
+  and initcode 16918 bytes. The full measure (the DAO part and the reactor part in one
   contract) is 37038 runtime bytes, over EIP-170 (Q-S10-12): by (d) the
   reactor part goes to row S10R with its own contract.
+  Closed in S10R: two contracts (Q-S10-12 (d)). The reactor does not
+  read `Params` by a view call: the DAO pushes the window at enact by one
+  `pay` to the reactor address (Q-S11-2 (a)). examples/reactor.lang with
+  the 16-step times (Q-S11-5 (c)) was 30185 runtime bytes, over EIP-170
+  (the size stop of S10R r1; fillSettle alone 18584). With the 6 call
+  words of fillSettle (Q-S11-8 (a)) it is runtime 20571 bytes and
+  initcode 20595 bytes, the `reactor size rows` line of test/reactor.sh.
 - O16: exponential ElGamal decryption needs a discrete log. The host
   evaluator bounds the plaintexts (for example 2^40) for the tests; the
   chain checks `m G` for a claimed `m` and never solves a discrete log.
@@ -613,6 +638,10 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   The chain side (fillSettle reads the window from the contract state)
   goes with the fill to row S10R (Q-S10-12 (d)): this row stays open for
   it.
+  Closed in S10R: fillSettle of examples/reactor.lang reads the window
+  from the reactor state, and only the DAO address sets it (the entry
+  `transfer`; the eval rows windowPush and windowOther, test/reactor.sh
+  step 28: windowOf 4 after enact).
 - O36 (S8, b1): NUMBER on the chain. evm 1.14.12 panics on a genesis
   number more than 0 ("can't commit genesis block with number > 0"), and
   `evm run` has no flag for the block number. Thus `evm run --prestate`
@@ -662,6 +691,11 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   The chain rows of this fixture (fill6 is short at window 6 and settles
   after enact sets window 4) go with the fill to row S10R (Q-S10-12
   (d)): this row stays open for them.
+  Closed in S10R: test/run/reactor.script rows 6 .. 11 on the guest and
+  the EVM (windowOf 6u, the settle of o 6 at t 2 reverts, a transfer by
+  the DAO address sets 4u, windowOf 4u, o 3 at t 8 reverts, o 6 settles)
+  and test/reactor.sh with enact of the DAO in place of the transfer
+  (the settle of o 6 reverts before enact and passes at step 30).
 - O42 (S9, b2, DEVIATION 2): Opens in examples/intent.lang is at Size
   (`Enc Size -> Size -> Type 0`, used by Fill). govern takes
   `OpensH (tallyEnc n bs) h` with `OpensH : Ballot -> Hist -> Type 0`
@@ -691,6 +725,11 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
 - O45 (S10, Q-S10-8 (a)): the randomness proofs of the intent and the
   quote (the S7 Sigma verifiers) stay host rows; the reactor entries
   check the amount openings only. This goes with the fill to row S10R.
+  Closed in S10R: fillOpen checks the opening of each amount word, and
+  fillSettle needs the 3 openings; no reactor entry checks a Sigma
+  randomness proof (the `sigma regressions` host rows). Known limit: the
+  chain does not refuse a fill whose intent or quote has a bad
+  randomness proof.
 - O46 (S10, Q-S10-12 (d)): the fill is out of S10. fillCipher, fillAuth,
   fillOpen, fillSettle and cancel, the views amountOf and closedOf, the
   fill chain rows with the two mock tokens (0x..ee in, 0x..ef out), the
@@ -698,6 +737,24 @@ Size and gas rows per entry (EIP-170, EIP-3860) come in the contract slice.
   of Q-S10-11 (a). S10 b5 wrote the reactor part, ran its 7 eval rows (as
   forecast) and measured the full contract (37038 runtime bytes, O15),
   then took it out of the repo. O35 and O41 stay open for it.
+  Closed in S10R: examples/reactor.lang has the entries and the views of
+  this row (and windowOf), the chain rows are test/run/reactor.script
+  (guest and EVM) and test/reactor.sh (the mocks 0x..ee and 0x..ef), the
+  gas rows are `reactor gas rows`, and the mutants are f1 .. f9 (f5 .. f9
+  for the new code). Q-S11-5 (c) moves the bound of Q-S10-11 (a) to
+  `times` k <= 16 and window <= 16u.
+- O47 (S10R, s4, DEVIATION 1): the reactor chain of test/evm.sh has a
+  stub token at 0x..ee and 0x..ef, not the `asmtool mock` of Q-S11-3
+  (a). The stub runtime `60015f5260205ff3` (PUSH1 1, PUSH0, MSTORE,
+  PUSH1 32, PUSH0, RETURN) returns the word 1 for each call. It has no
+  storage and writes no logs. The reason: a CALL to an address with no
+  code gives empty return data, and the lowering accepts empty return
+  data only from an address with code, so each pull of fillSettle
+  reverts (the C-K4-14 class; a test fault, not a src/ fault). The mock
+  writes one Transfer LOG3 for each move, and these logs are not events
+  of the program, so the log rows of the EVM and the guest would not
+  agree. test/reactor.sh runs the pulls on the `asmtool mock` tokens and
+  checks their balance slots.
 
 ## 11. Questions for the USER (S1, S2)
 
@@ -1300,3 +1357,109 @@ Q-S10-1..10: take all recommendations."
   contract; the reactor part goes to a new row with its own contract.
   RECOMMENDED. USER 2026-10-25: (d).
   RULED: (d).
+
+Questions of the S11 kickoff (2026-10-25, the survey is
+~/Documents/intent-lang-work/S11-survey.md). Each has a recommended (a).
+All seven are RULED (S11 kickoff, 2026-10-25): (a) for Q-S11-1 ..
+Q-S11-4, Q-S11-6 and Q-S11-7, (c) for Q-S11-5 (the USER answered each
+question in the kickoff question form).
+
+- Q-S11-1 (S10R, S11): the order of the two rows. S11 needs the reactor for
+  the final gate in the docs/VALIDATION.md header, SPEC.md section 7 (two
+  contracts), the known limits and the close of O35, O41, O45 and O46.
+  S10R needs nothing from S11, and the route of Q-S11-2 (a) changes the DAO
+  contract. (a) S10R first (its own build plan), then S11 closes the plan
+  with the reactor in it, so the close docs are written one time.
+  RECOMMENDED. (b) S11 first (the mutants and the close of S1 .. S10),
+  then S10R as the last row (the close docs change again). (c) S10R leaves
+  this plan (a follow-up plan); S11 records O35, O41, O45 and O46 as open.
+  USER 2026-10-25: (a).
+  RULED: (a).
+- Q-S11-2 (S10R, O15): the window route. The kit has no general call:
+  `pay` and `pull` are one CALL with the names transfer and transferFrom
+  (src/lower.c:792, src/evm.c:316-344), and STATICCALL goes only to the
+  precompiles 1, 6, 7 and 8 (src/evm.c:366-384). (a) the DAO pushes the
+  window: enact adds one `pay` to the reactor address with the amount w
+  (the new window; the to word is not read), and the reactor has an entry
+  `transfer (to : Addr) (amount : U256)` that reverts unless the caller is
+  the DAO address (a contract constant), and sets window := amount. No kit
+  change and no trust change. The build first probes that the entry
+  selector is the pay selector (transfer(address,uint256)); if the probe
+  fails, STOP and ask (b). A CALL to an address with no code reverts, so
+  test/dao.sh puts the reactor code at the reactor address; the enact
+  rows, test/run/daokit.out and the DAO size and gas rows change. The
+  reactor answers the ERC-20 transfer selector (a known limit).
+  RECOMMENDED. (b) a new kit prim for a static call (STATICCALL to a word
+  address, one word out, a lower memo; stuck on the guest). (c) the
+  reactor keeps its own window, set by an owner entry (a trust change: the
+  swap does not follow the vote on the chain). (d) one contract by a
+  lowering change (a def used more than once lowers to one internal
+  subroutine, Q-S10-12 (b)).
+  USER 2026-10-25: (a).
+  RULED: (a).
+- Q-S11-3 (S10R): the mock tokens. (a) the `build/asmtool mock` runtime of
+  test/mock.sh at 0x..ee (in) and 0x..ef (out), with the balances in the
+  prestate (no allowance and no balance check); the chain rows read the
+  balance slots. RECOMMENDED. (b) a new mock with allowance and balance
+  checks (a new asmtool mode and its rows).
+  USER 2026-10-25: (a).
+  RULED: (a).
+- Q-S11-4 (S10R): the files. (a) a new kit file examples/reactor.lang (from
+  S10-b5/reactor.lang: its own State with window, keys, fills and addrs;
+  the helpers it needs from examples/daokit.lang and
+  examples/intentsig.lang copied in), test/run/reactor.script on the
+  test/evm.sh chain, the 7 fill eval rows, and a new test/reactor.sh (the
+  DAO, the reactor and the two mocks in one prestate: the casts, enact with
+  the window push, then the fill rows) with the new gate lines `reactor
+  size rows`, `reactor gas rows` and `reactor chain: N steps, 0 failures`;
+  test/dao.sh keeps its 33 steps. RECOMMENDED. (b) the fill rows go into
+  test/dao.sh (one chain test; the `dao chain` count changes).
+  USER 2026-10-25: (a).
+  RULED: (a).
+- Q-S11-5 (S10R, Q-S10-11 (a)): the window cap. No DAO entry writes
+  `proposal` (init 4u, examples/daokit.lang:18 and :391), so the chain
+  window is 6u or 4u. (a) a known limit: fillSettle reverts when the
+  window is more than 8u, and the window entry stores any amount.
+  RECOMMENDED. (b) the window entry reverts when the amount is more than 8u
+  (then enact reverts for a large proposal). (c) a longer `times` chain
+  (k <= 16; more bytes).
+  USER 2026-10-25: (c).
+  RULED: (c).
+- Q-S11-6 (S11): the mutants. 60 intent-lang mutants are killed (S3 1, S4
+  3, S5 7, S6 6, S7 14, S8 13, S9 7, S10 9), and f1 .. f4 go with S10R.
+  These refusal codes have no intent-lang mutant: REFUSE_STATE,
+  REFUSE_DATA, REFUSE_NAME, REFUSE_REC, REFUSE_MAP, REFUSE_EVENT,
+  REFUSE_HISTORY_WRITE and REFUSE_AXIOM; REFUSE_KIT, REFUSE_SIG and
+  REFUSE_CONTRACT have orbit-lang mutants only. (a) one mutant for each of
+  the 11 codes (each code has a check row as the killer), and the S6 lines
+  of S6-mutants.out go into docs/VALIDATION.md. RECOMMENDED. (b) mutants
+  for REFUSE_STATE and REFUSE_DATA only; the other codes cite the
+  orbit-lang record. (c) no new mutants.
+  USER 2026-10-25: (a).
+  RULED: (a).
+- Q-S11-7 (S11): the close docs. (a) all of them: docs/STATUS.md (the first
+  paragraph, Remaining M0 work, Known limits: O16, O28, O29, O30, O31, O37,
+  O38, O39, O45, the window cap, the transfer selector of the reactor and
+  the gas rows that are not checked; Internal boundaries), SPEC.md
+  sections 3 .. 10, the template lines of README.md (:18, :23-24), the
+  docs/VALIDATION.md header as the final intent-lang gate (the orbit-lang
+  part marked as the port record, its STATUS cites to orbit-lang 2162fb2),
+  the R4 text of SPEC.md:70, the stale PLANNED of O26, and O33 closed in
+  S8. RECOMMENDED. (b) as (a), but SPEC.md sections 5 and 6 point to PLAN
+  section 3. (c) docs/STATUS.md and docs/VALIDATION.md only.
+  USER 2026-10-25: (a).
+  RULED: (a).
+- Q-S11-8 (S10R, O15): the reactor size (the SIZE STOP of S10R r1).
+  examples/reactor.lang with the 16-step times (Q-S11-5 (c)) is over the
+  limit: `langc: EVM_SIZE` (runtime 30185, 5609 over 24576; fillSettle
+  alone is 18584). (a) route (e) of the survey: fillSettle takes so, mo,
+  start and amtIn as 4 more call words (6 words: h o so mo st amt) and
+  checks each one time against fillWord (a wrong word reverts), so the
+  inline copies of times are call-data loads. Measured: initcode 20509
+  bytes, runtime 20485 (under 24576 by 4091); the 5 fillSettle eval rows
+  give the same answers. RECOMMENDED. (b) times back to k <= 8 and the cap
+  8u (Q-S11-5 (a)); not measured on this State. (c) subroutine lowering in
+  the kit (no call stmt in the IR today, src/ir.h:100-110): a kit change,
+  more than one session.
+  USER 2026-10-25: (a).
+  RULED: (a).

@@ -1,0 +1,354 @@
+-- The reactor contract (S10R, PLAN row S10R; survey section 7, Q-S10-8 (a), Q-S10-11 (a), Q-S10-12 (d),
+-- Q-S11-2 (a), Q-S11-5 (c)). A kit file: the fill of an encrypted intent (fillCipher, fillAuth, fillOpen,
+-- fillSettle) and cancel, with its own state. The window comes from the DAO (examples/daokit.lang): enact
+-- pays the new window to this contract, and the entry transfer sets window when the caller is the DAO
+-- address (a contract constant, the receiver address of test/evmchain.sh). The share keys k1 k2, the
+-- Lagrange constants l1 l2 and the opening helpers are copies of examples/daokit.lang (O31).
+state State := makeState (window : U256) (keys : Map U256 Flag) (fills : Map U256 U256) (addrs : Map U256 Addr)
+
+-- window 6 (the init of the DAO).
+def init : State := makeState 6u mapEmpty mapEmpty mapEmpty
+
+-- The DAO address.
+def dao : Addr := 0x0000000000000000000000007265636569766572
+
+-- The helpers of the opening (copies of examples/daokit.lang).
+def dleqTag : U256 := 1684825457u
+def k1x : U256 := 0x1f8998908f24942c91e985c7d47ef1a72c4b50225e2eab95d035b5f35d266fb6u
+def k1y : U256 := 0x08e06bf52945ba6717f9228de2d3dba0ca205f0725120f2da2b61c3eaab51797u
+def k2x : U256 := 0x0157617a11853788bb8d67856a99d328ed1cb6e39bed065c5482dc9cacc0e601u
+def k2y : U256 := 0x10bc0e67568b5cc1a3c7cbde5e877ae062c7c9eb8c5ac2a281d006f71ba1e5dau
+def l1 : U256 := 0x0000000000000000000000000000000000000000000000000000000000000002u
+def l2 : U256 := 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000u
+def gen : Prod U256 U256 := pair 1u 2u
+def pointEq : (p q : Prod U256 U256) -> Flag :=
+  fun (p q : Prod U256 U256) => flagIf (u256Eq (first p) (first q)) (u256Eq (second p) (second q)) flagNo
+def challenge : (pkx pky cx cy dx dy ax ay bx by : U256) -> U256 :=
+  fun (pkx pky cx cy dx dy ax ay bx by : U256) =>
+    hash (hash (hash (hash (hash (hash (hash (hash (hash (hash dleqTag pkx) pky) cx) cy) dx) dy) ax) ay) bx) by
+def dleqWith : (pkx pky cx cy dx dy ax ay bx by z e : U256) -> Flag :=
+  fun (pkx pky cx cy dx dy ax ay bx by z e : U256) =>
+    flagIf (pointEq (ecMul (pair 1u 2u) z) (ecAdd (pair ax ay) (ecMul (pair pkx pky) e)))
+      (pointEq (ecMul (pair cx cy) z) (ecAdd (pair bx by) (ecMul (pair dx dy) e)))
+      flagNo
+def dleq : (pkx pky cx cy dx dy ax ay bx by z : U256) -> Flag :=
+  fun (pkx pky cx cy dx dy ax ay bx by z : U256) =>
+    dleqWith pkx pky cx cy dx dy ax ay bx by z (challenge pkx pky cx cy dx dy ax ay bx by)
+def openSum : (c1 c2 : Prod U256 U256) -> (cx cy ex ey d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) -> Flag :=
+  fun (c1 c2 : Prod U256 U256) (cx cy ex ey d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) =>
+    flagIf (pointEq c1 (pair cx cy))
+      (flagIf (pointEq c2 (pair ex ey))
+        (flagIf (dleq k1x k1y cx cy d1x d1y a1x a1y b1x b1y z1)
+          (flagIf (dleq k2x k2y cx cy d2x d2y a2x a2y b2x b2y z2)
+            (pointEq (pair ex ey) (ecAdd (ecMul gen m) (ecAdd (ecMul (pair d1x d1y) l1) (ecMul (pair d2x d2y) l2))))
+            flagNo)
+          flagNo)
+        flagNo)
+      flagNo
+def slotBase : (j : U256) -> U256 :=
+  fun (j : U256) => u256Add (u256Add j j) (u256Add j j)
+def kept : (p : Map U256 U256) -> (n k : U256) -> Prod U256 U256 :=
+  fun (p : Map U256 U256) (n k : U256) => pair (mapGet p (hash n k)) (mapGet p (hash n (u256Add k 1u)))
+
+-- The constants of the fill come from `build/ballottool dao` (inTok .. n8w): the intent of the owner
+-- (key 0x2b), amtIn 3, startOut 8, minOut 4 under pk, start 100, nonce 7 (the fill) and nonce 8 (the
+-- cancel rows).
+def inTok : Addr := 0x00000000000000000000000000000000000000ee
+def outTok : Addr := 0x00000000000000000000000000000000000000ef
+def owner : Addr := 0xeb3025e7ac2764040384316b33476e048961a71f
+def start : U256 := 0x0000000000000000000000000000000000000000000000000000000000000064u
+def fac1x : U256 := 0x1980cf85a92838376c3efb1718672fd018d36e520630554aba3d4c6eeb7929a4u
+def fac1y : U256 := 0x2dcdb572efc647cdec78c1aaf7061c8de1a0fec923a6c591a227afda8de514dcu
+def fac2x : U256 := 0x21da44a7c86c1e2415814811e97009348204a8b8f962b24d735b21af6c03bfc0u
+def fac2y : U256 := 0x0d9df21af81235a3c81567d20beb6f4fac34a1c52626175a0ffae92d57a76889u
+def fsc1x : U256 := 0x1dc9cc8112a99f4d3436eec11c8d91a8884692392ad3dc17befa764968b2f4f1u
+def fsc1y : U256 := 0x1246d18590202886898ace5c5c400057d7474a52c8347961e5c63063222a0b13u
+def fsc2x : U256 := 0x1fc9713ecbc359dab0dbb8b526487906542d4810319f20f8ef21e0e56edbc605u
+def fsc2y : U256 := 0x1421329cdc3fb0902967654c66415b8dec273de69b77dd3ffd9133891b631767u
+def fmc1x : U256 := 0x1b04fc3aaec9ef489a14d195e8026cf66c03a26b09eee1e5b24e31f15c825655u
+def fmc1y : U256 := 0x285e8d60ba31cec634a16c0fb42a588cf4cf245f9e925212511b224fc6849bfbu
+def fmc2x : U256 := 0x164cd61aa21446cc41e2d05c390e796582da1d3dd9042be3fe7631f86c172d57u
+def fmc2y : U256 := 0x2072a6c0c7fb99d1224341bd5ca31bbe1c68e4dc4e493f6724d2891bd895d5fdu
+def d0 : U256 := 0x0000000000000000000000000000000000000000000000000000000000000003u
+def d1 : U256 := 0x0000000000000000000000000000000000000000000000000000000000000001u
+def d2 : U256 := 0x0000000000000000000000000000000000000000000000000000000000000004u
+def d3 : U256 := 0x0000000000000000000000000000000000000000000000000000000000000001u
+def digest : U256 := 0x7850631940c1e4e007fdb3bc19e780e2694ec7f4429b0f6a9c732b17375d6c38u
+def oad1x : U256 := 0x0777d4806f22845444547184f5521e41d0e43c02b0e1e19af4eedee9854c6c28u
+def oad1y : U256 := 0x1f1ce6762f7a50a0e697b0bad0fc49e40f8fd32468dbe2cb69dc5e50a6766153u
+def oaa1x : U256 := 0x075a88173572596320d3c5301ac992797ed98e9250e003851d3b0e4ccaf974eau
+def oaa1y : U256 := 0x060d1f987df536e642a7981b7ebbdb0b21f3148c52c95237bceedde91bf43f71u
+def oab1x : U256 := 0x1f34e95efe036593e425309b790f31c49471179c2b8738e84eb68272a1e3520au
+def oab1y : U256 := 0x0bec870058942017efdd2c93f81f4638fd7f2795a8c8bfad4058828a0d04aa63u
+def oaz1 : U256 := 0x09975adf82b02cdad8d0f7d99c9198f60ded57007e2c84a8184a1251417295a5u
+def oad2x : U256 := 0x22087015affd6cab6177b0cd82a5e91b6d2cd294a1a249af0ee5bff79cc27411u
+def oad2y : U256 := 0x296e20cb44d083e90bba674a4792e64190e9c3528b8108416e62de2508b99cdcu
+def oaa2x : U256 := 0x1a8861e5b1009cfdbfe231ae38a902ec1c896dd6b7ec05b4c02d38bbde076e3du
+def oaa2y : U256 := 0x15d7a423743663443bb8707bcf3086ded260009f74702e3b17ad6f028909d008u
+def oab2x : U256 := 0x0577a3fdd245619ce946e59a39a395810eeae04f31bc324020ff7c8d91f429d6u
+def oab2y : U256 := 0x1a876228b95a6ab85ffda3e69a429e58ef39959f50d5dd61f8edc906b5be35bau
+def oaz2 : U256 := 0x1df93dffff51e8d4a653c2323b8c520c40d64196430fb1ef69b2e9475c2e9a3du
+def oakx : U256 := 0x21a0bdd3a01e4557e29541f419c1b60ee9de9c5a1d5976c4470c82ca989d824au
+def oaky : U256 := 0x25fcbbc69a58e107aed858bfb9f0cdca58a6db8f27e01c13c7e7c74dbc1d0e96u
+def osd1x : U256 := 0x12cb52910b4ba1a1eb1491355d654b33d5a8ad346a7bf2ba53eadc62d45c3e3cu
+def osd1y : U256 := 0x0cc03ce626d79b70afba9abb573111d87debd122af7e1b62afcd4f75333c936eu
+def osa1x : U256 := 0x1c9a2a8c7ce0fdecb606c8216e443276481d2156dc03fca265146c4f8e4a0269u
+def osa1y : U256 := 0x00712c16c6e21af32bc78ee3d4c2ce95f6107e25a0ff98bf507079bd96e9c4efu
+def osb1x : U256 := 0x122a401a2a844977deaab98d0b97b49a840ce7f0a813e9549880707602c8f396u
+def osb1y : U256 := 0x0b71a804aa5bef1c41e97e2afc79c268de00a3bd90fa23567a068564eb169e86u
+def osz1 : U256 := 0x19447c77678bc444197fc171ea2d12385b5ff1d5a15c4564c8858bb181f3dde5u
+def osd2x : U256 := 0x0de7346fde5d52b5925025c7bd633d5e0c856b03c0829ec608688a9ab5e6ceb2u
+def osd2y : U256 := 0x16c008ae3ebc497c654d595289acbee4798c80eed3ba1f24f346b8a932af48a2u
+def osa2x : U256 := 0x0c3c3e6e1f7f4fef7c71e0597879c05639edcc7125d6b27ac167f6816aa744a9u
+def osa2y : U256 := 0x2eba7d307d75a4971e579ba60c23ab5ef9bcc612baa1217125b35523d887a70fu
+def osb2x : U256 := 0x08318ecad92e2149f40ad2eae6eaf1beacc2b6678898014df86c865d9e87c389u
+def osb2y : U256 := 0x00b6dff53032e213c8e98753472f0cfe6426174da115a755c19e712557f7f4a9u
+def osz2 : U256 := 0x0fb80cdb526a2251559c92ef2bfbef270e16dbc0a2e4d13ccd85755ab4cdcf7cu
+def oskx : U256 := 0x25817dd35755581e0ef84fd749fd6fa6c4758a0c9ff54c77f036a9841fe510f9u
+def osky : U256 := 0x2fef42edef87dfbb4c9cedba1fd80a626b94f4dbf430d93e5a747fd4146a5220u
+def omd1x : U256 := 0x216a332424226bc8a108efa05065d28bb3a7a6ef394fb4d91b6db717d13e228du
+def omd1y : U256 := 0x06caa3e16b29293bc0eaf1653a8921e65705da39e242931aabfcbd958775b6c2u
+def oma1x : U256 := 0x00a545f666facb7a08e95a28e028fa758823df8706ac3b8f13d9dc01b85070c1u
+def oma1y : U256 := 0x070219452fcf6c6dd380fa26067fdc5f9346f8da85839e30ddc42c02f6e891d9u
+def omb1x : U256 := 0x0981e8277122874f4f6ba0422384f2ae9ca704ec83b6d2c709d7784d3e22aa13u
+def omb1y : U256 := 0x1ac62c5e99e37c39f627bebff3df8135e3801325d4d7a6a913bde75d122c43d4u
+def omz1 : U256 := 0x0371a5283e69bff135fa20c20271d196ca5d957937f171925f934b51c38fbd6bu
+def omd2x : U256 := 0x216c01a15c2888936e7b0b52ddba3a67cb96f0324ee5da0664b623ab8385ba09u
+def omd2y : U256 := 0x2c42ed229622482293142bee4ec00b0eb595554cce4cdf230e506f2b07f68f77u
+def oma2x : U256 := 0x162e08d88b936facc186d18aee33ccbde83cf96483babf44f1f837cf6113953du
+def oma2y : U256 := 0x041b6e0c25d604210496be17ae1d833303d873ed1046b1e67b4a6ad7dfac60ecu
+def omb2x : U256 := 0x29e948aba27ff54b8604a93f9bc7d8bd5186d51fa6be705ec449ce5664aad70bu
+def omb2y : U256 := 0x066ddf7dfdd22a1b7440dfd878c21a3044b4499b94745469b5d23b45a29c5647u
+def omz2 : U256 := 0x2c753994cfb6d84609e9b45ef08b7b11c2c22dc644ec9c356c3eff3c64e0699au
+def omkx : U256 := 0x190f30e63322e9526222d9eaa7c79e690da2c4d4728c9e19e09f4f4502451746u
+def omky : U256 := 0x2c714a92ec682dc6e5a5ca447d73ee0ec2ae3bdede3bce7ace64862db628df29u
+def n7hash : U256 := 0x151ff2cfab4ff5f63c2c09c48a83ed78c611e6f1080c07d9b39aabce83fe89a4u
+def n7key : U256 := 0xfe282769ba0a361c75b239610d2e939b9534eb1c942a84ac40bfd3fba7b0719au
+def n7v : Nat := 28
+def n7r : U256 := 0x2b4ea0a797a443d293ef5cff444f4979f06acfebd7e86d277475656138385b6cu
+def n7w : U256 := 0x4c0900e5925223aaae0862e9d7609093f6e348a3d23dfcec8d2d44bcd2624907u
+def n8hash : U256 := 0x4caf83148da049350672dc29cc07629e913518e7917965ed5a8ca467f57b2689u
+def n8key : U256 := 0xd3e958cf0b5ca27ec4415f35d9f67b4d94dbed994b1570a2522aeb90b5519cb4u
+def n8v : Nat := 27
+def n8r : U256 := 0x4ce119c96e2fa357200b559b2f7dd5a5f02d5290aff74b03f3e471b273211c97u
+def n8w : U256 := 0x291ff1321a61a2d79204830fbd1bb6ad54b3111c1d28a31017629a31a87f052bu
+
+-- The word-level intent helpers of examples/intentsig.lang (copied; its fillAuth is sigFill here).
+def intentTag : U256 := 0x696e74656e74u
+
+def cipherDigest : (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) -> U256 :=
+  fun (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) =>
+    hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash (hash a1x a1y) a2x) a2y) s1x) s1y) s2x) s2y) m1x) m1y) m2x) m2y) d0) d1) d2) d3
+
+def intentHash : (inTok outTok ct : U256) -> (owner : Addr) -> (nonce start : U256) -> U256 :=
+  fun (inTok outTok ct : U256) (owner : Addr) (nonce start : U256) =>
+    hash (hash (hash (hash (hash (hash intentTag inTok) outTok) ct) (addrToU256 owner)) nonce) start
+
+def replayKey : (owner : Addr) -> (nonce : U256) -> U256 :=
+  fun (owner : Addr) (nonce : U256) => hash (addrToU256 owner) nonce
+
+-- An invalid signature gives the address 0 (R18), so the owner 0 must not match.
+def sigFill : (h : U256) -> (v : Nat) -> (r w : U256) -> (owner : Addr) -> Flag :=
+  fun (h : U256) (v : Nat) (r w : U256) (owner : Addr) =>
+    flagIf (addrEq owner 0x0000000000000000000000000000000000000000) flagNo (addrEq (ecrecover h v r w) owner)
+
+
+
+-- The fill (survey section 7). The record of an intent h: fills at h is 1u after fillAuth, at hash h 0u
+-- the cipher digest D, 4u the start, 5u the replay key, 6u + k the opened amount k (amtIn, startOut,
+-- minOut) and 9u + k its flag; addrs at hash h 1u inTok, 2u outTok, 3u the owner. fills at D is 1u after
+-- fillCipher, and hash D i (i = 4 k + 0 .. 3, c1x c1y c2x c2y of amount k) holds the 12 amount words.
+event Settled (settledHash : U256)
+event Cancelled (cancelKey : U256)
+
+def fillWord : (s : State) -> (h i : U256) -> U256 :=
+  fun (s : State) (h i : U256) => mapGet (fills s) (hash h i)
+def minOf : (a b : U256) -> U256 :=
+  fun (a b : U256) => flagIf (u256Le a b) a b
+
+-- The bounded multiply of Q-S10-11 (a) and Q-S11-5 (c): times k x = k x for k = 0u .. 16u (a sum
+-- chain, no multiply prim). times8 is the chain for k = 0u .. 8u (k more than 8u gives 8 x); times k x
+-- for k more than 8u is 8 x + times8 (k - 8u) x, so k more than 16u gives 16 x. fillSettle reverts when
+-- the window is more than 16u, and t <= window.
+def twice : (x : U256) -> U256 :=
+  fun (x : U256) => u256Add x x
+def times8 : (k x : U256) -> U256 :=
+  fun (k x : U256) =>
+    flagIf (u256Le k 3u)
+      (flagIf (u256Le k 1u) (flagIf (u256Eq k 0u) 0u x) (flagIf (u256Eq k 2u) (twice x) (u256Add (twice x) x)))
+      (flagIf (u256Le k 5u)
+        (flagIf (u256Eq k 4u) (twice (twice x)) (u256Add (twice (twice x)) x))
+        (flagIf (u256Le k 7u)
+          (flagIf (u256Eq k 6u) (twice (u256Add (twice x) x)) (u256Add (twice (u256Add (twice x) x)) x))
+          (twice (twice (twice x)))))
+
+def times : (k x : U256) -> U256 :=
+  fun (k x : U256) =>
+    flagIf (u256Le k 8u) (times8 k x) (u256Add (twice (twice (twice x))) (times8 (u256Sub k 8u) x))
+
+-- Rule 4.1 at word level: w (so - o) <= t (so - mo), as w so + t mo <= w o + t so (no u256Sub
+-- trap); o at least both endpoints is accepted at once.
+def aboveEnds : (so mo o : U256) -> Flag :=
+  fun (so mo o : U256) => flagIf (u256Le so o) (u256Le mo o) flagNo
+def acceptW : (w t so mo o : U256) -> Flag :=
+  fun (w t so mo o : U256) =>
+    flagIf (aboveEnds so mo o) flagYes (u256Le (u256Add (times w so) (times t mo)) (u256Add (times w o) (times t so)))
+
+-- The opening of the kept amount (c1, c2) with the shares of the quorum {1, 2} (openSum of enact).
+def openKept : (c1 c2 : Prod U256 U256) -> (d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) -> Flag :=
+  fun (c1 c2 : Prod U256 U256) (d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) =>
+    openSum c1 c2 (first c1) (second c1) (first c2) (second c2) d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m
+
+def keepCipher : (s : State) -> (d a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y : U256) -> State :=
+  fun (s : State) (d a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y : U256) =>
+    makeState (window s) (keys s)
+      (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (mapSet (fills s)
+        d 1u) (hash d 0u) a1x) (hash d 1u) a1y) (hash d 2u) a2x) (hash d 3u) a2y) (hash d 4u) s1x) (hash d 5u) s1y)
+        (hash d 6u) s2x) (hash d 7u) s2y) (hash d 8u) m1x) (hash d 9u) m1y) (hash d 10u) m2x) (hash d 11u) m2y)
+      (addrs s)
+def keepIntent : (s : State) -> (h d : U256) -> (inTok outTok owner : Addr) -> (start key : U256) -> State :=
+  fun (s : State) (h d : U256) (inTok outTok owner : Addr) (start key : U256) =>
+    makeState (window s) (keys s)
+      (mapSet (mapSet (mapSet (mapSet (fills s) h 1u) (hash h 0u) d) (hash h 4u) start) (hash h 5u) key)
+      (mapSet (mapSet (mapSet (addrs s) (hash h 1u) inTok) (hash h 2u) outTok) (hash h 3u) owner)
+def keepOpen : (s : State) -> (h k m : U256) -> State :=
+  fun (s : State) (h k m : U256) =>
+    makeState (window s) (keys s)
+      (mapSet (mapSet (fills s) (hash h (u256Add k 6u)) m) (hash h (u256Add k 9u)) 1u) (addrs s)
+def keyMark : (s : State) -> (key : U256) -> State :=
+  fun (s : State) (key : U256) =>
+    makeState (window s) (mapSet (keys s) key flagYes) (fills s) (addrs s)
+def opened : (s : State) -> (h : U256) -> Flag :=
+  fun (s : State) (h : U256) =>
+    flagIf (u256Eq (fillWord s h 9u) 1u) (flagIf (u256Eq (fillWord s h 10u) 1u) (u256Eq (fillWord s h 11u) 1u) flagNo) flagNo
+
+-- Entry fillCipher (16 words): the 12 amount words under D = cipherDigest.
+def fillCipher : (env : Env) -> (s : State) -> (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) -> Option (Prod State (List Out)) :=
+  fun (env : Env) (s : State) (a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3 : U256) =>
+    some (pair (keepCipher s (cipherDigest a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y d0 d1 d2 d3)
+      a1x a1y a2x a2y s1x s1y s2x s2y m1x m1y m2x m2y) nil)
+
+-- Entry fillAuth (9 words): D has a fillCipher, the replay key of (owner, nonce) is not in keys, the
+-- owner signed h = intentHash, then the record of h.
+def fillAuth : (env : Env) -> (s : State) -> (inTok outTok : Addr) -> (d : U256) -> (owner : Addr) -> (nonce start : U256) -> (v : Nat) -> (r w : U256) -> Option (Prod State (List Out)) :=
+  fun (env : Env) (s : State) (inTok outTok : Addr) (d : U256) (owner : Addr) (nonce start : U256) (v : Nat) (r w : U256) =>
+    flagIf (u256Eq (mapGet (fills s) d) 1u)
+      (flagIf (mapGet (keys s) (replayKey owner nonce))
+        none
+        (flagIf (sigFill (intentHash (addrToU256 inTok) (addrToU256 outTok) d owner nonce start) v r w owner)
+          (some (pair (keepIntent s (intentHash (addrToU256 inTok) (addrToU256 outTok) d owner nonce start) d
+            inTok outTok owner start (replayKey owner nonce)) nil))
+          none))
+      none
+
+-- Entry fillOpen (17 words): h has a record, k is 0, 1 or 2, m is below the BN254 subgroup order
+-- (l2 is that order minus 1), the opening of amount k with m, then m and the flag of k.
+def fillOpen : (env : Env) -> (s : State) -> (h k d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) -> Option (Prod State (List Out)) :=
+  fun (env : Env) (s : State) (h k d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m : U256) =>
+    flagIf (u256Eq (mapGet (fills s) h) 1u)
+      (flagIf (u256Le k 2u)
+        (flagIf (u256Le m l2)
+          (flagIf (openKept (kept (fills s) (fillWord s h 0u) (slotBase k)) (kept (fills s) (fillWord s h 0u) (u256Add (slotBase k) 2u))
+                d1x d1y a1x a1y b1x b1y z1 d2x d2y a2x a2y b2x b2y z2 m)
+            (some (pair (keepOpen s h k m) nil))
+            none)
+          none)
+        none)
+      none
+
+-- Entry fillSettle (6 words: h o so mo st amt, Q-S11-8 (a)): the 3 openings, the replay key not in keys, then
+-- so = startOut, mo = minOut, st = start and amt = amtIn of h (each stored word checked one time against fillWord;
+-- a wrong word reverts, so the inline copies of times are call-data loads), block >= start, window <= 16u
+-- (Q-S10-11, Q-S11-5 (c)), t = min (block - start) window, Accept window t startOut minOut o (rule 4.1), then the key
+-- to keys, pull inTok owner caller amtIn, pull outTok caller owner o, Settled h.
+def fillSettle : (env : Env) -> (s : State) -> (h o so mo st amt : U256) -> Option (Prod State (List Out)) :=
+  fun (env : Env) (s : State) (h o so mo st amt : U256) =>
+    flagIf (opened s h)
+      (flagIf (mapGet (keys s) (fillWord s h 5u))
+        none
+        (flagIf (u256Eq so (fillWord s h 7u))
+          (flagIf (u256Eq mo (fillWord s h 8u))
+            (flagIf (u256Eq st (fillWord s h 4u))
+              (flagIf (u256Eq amt (fillWord s h 6u))
+                (flagIf (u256Le st (block env))
+                  (flagIf (u256Le (window s) 16u)
+                    (flagIf (acceptW (window s) (minOf (u256Sub (block env) st) (window s)) so mo o)
+                      (some (pair (keyMark s (fillWord s h 5u))
+                        (cons (pull (mapGet (addrs s) (hash h 1u)) (mapGet (addrs s) (hash h 3u)) (caller env) amt)
+                          (cons (pull (mapGet (addrs s) (hash h 2u)) (caller env) (mapGet (addrs s) (hash h 3u)) o)
+                            (cons (Settled h) nil)))))
+                      none)
+                    none)
+                  none)
+                none)
+              none)
+            none)
+          none))
+      none
+
+-- Entry transfer (2 words, Q-S11-2 (a)): enact of the DAO pushes the window as a pay to this
+-- contract (the ERC-20 transfer selector). Revert unless the caller is the DAO; the to word is not read.
+def transfer : (env : Env) -> (s : State) -> (to : Addr) -> (amount : U256) -> Option (Prod State (List Out)) :=
+  fun (env : Env) (s : State) (to : Addr) (amount : U256) =>
+    flagIf (u256Eq (addrToU256 (caller env)) (addrToU256 dao))
+      (some (pair (makeState amount (keys s) (fills s) (addrs s)) nil))
+      none
+
+-- Entry cancel (1 word): the replay key of (caller, nonce) to keys.
+def cancel : (env : Env) -> (s : State) -> (nonce : U256) -> Option (Prod State (List Out)) :=
+  fun (env : Env) (s : State) (nonce : U256) =>
+    some (pair (keyMark s (replayKey (caller env) nonce)) (cons (Cancelled (replayKey (caller env) nonce)) nil))
+
+-- Views: the window, the opened amount k of h, and 1u when the replay key of (owner, nonce) is in keys.
+def windowOf : (env : Env) -> (s : State) -> U256 :=
+  fun (env : Env) (s : State) => window s
+def amountOf : (env : Env) -> (s : State) -> (h k : U256) -> U256 :=
+  fun (env : Env) (s : State) (h k : U256) => fillWord s h (u256Add k 6u)
+def closedOf : (env : Env) -> (s : State) -> (owner : Addr) -> (nonce : U256) -> U256 :=
+  fun (env : Env) (s : State) (owner : Addr) (nonce : U256) => flagIf (mapGet (keys s) (replayKey owner nonce)) 1u 0u
+
+-- Eval rows of the fill: the cipher, nonce 7, the 3 openings (m 3, 8, 4) at BLOCK 0, then fillSettle at
+-- BLOCK 102 (t 2): o 6 is short at window 6, settles after enact (a transfer by the DAO sets window 4); o 3 at BLOCK 108 (t 8 > 4)
+-- reverts; the replay reverts; a cancel by the owner closes nonce 8.
+def e0 : Env := makeEnv 0 0u 0x00000000000000000000000000000000000000aa
+def eDao : Env := makeEnv 0 0u dao
+def e102 : Env := makeEnv 102 102u 0x00000000000000000000000000000000000000aa
+def e108 : Env := makeEnv 108 108u 0x00000000000000000000000000000000000000aa
+def eOwner : Env := makeEnv 0 0u owner
+def fillOn : (s : State) -> Option (Prod State (List Out)) :=
+  fun (s : State) =>
+    bind (fillCipher e0 s fac1x fac1y fac2x fac2y fsc1x fsc1y fsc2x fsc2y fmc1x fmc1y fmc2x fmc2y d0 d1 d2 d3) (fun (a : Prod State (List Out)) =>
+      bind (fillAuth e0 (first a) inTok outTok digest owner 7u start n7v n7r n7w) (fun (b : Prod State (List Out)) =>
+        bind (fillOpen e0 (first b) n7hash 0u oad1x oad1y oaa1x oaa1y oab1x oab1y oaz1 oad2x oad2y oaa2x oaa2y oab2x oab2y oaz2 3u) (fun (c : Prod State (List Out)) =>
+          bind (fillOpen e0 (first c) n7hash 1u osd1x osd1y osa1x osa1y osb1x osb1y osz1 osd2x osd2y osa2x osa2y osb2x osb2y osz2 8u) (fun (d : Prod State (List Out)) =>
+            fillOpen e0 (first d) n7hash 2u omd1x omd1y oma1x oma1y omb1x omb1y omz1 omd2x omd2y oma2x oma2y omb2x omb2y omz2 4u))))
+def f6 : Option (Prod State (List Out)) := fillOn init
+def fEnacted : Option (Prod State (List Out)) := bind (transfer eDao init dao 4u) (fun (q : Prod State (List Out)) => fillOn (first q))
+def fillMin : Option U256 := map (fun (r : Prod State (List Out)) => amountOf e0 (first r) n7hash 2u) f6
+def fillShort : Option (Prod State (List Out)) := bind f6 (fun (r : Prod State (List Out)) => fillSettle e102 (first r) n7hash 6u 8u 4u start 3u)
+def fillLow : Option (Prod State (List Out)) := bind fEnacted (fun (r : Prod State (List Out)) => fillSettle e108 (first r) n7hash 3u 8u 4u start 3u)
+def fillDone : Option U256 := map (fun (q : Prod State (List Out)) => closedOf e0 (first q) owner 7u) (bind fEnacted (fun (r : Prod State (List Out)) => fillSettle e102 (first r) n7hash 6u 8u 4u start 3u))
+def fillReplay : Option (Prod State (List Out)) := bind (bind fEnacted (fun (r : Prod State (List Out)) => fillSettle e102 (first r) n7hash 6u 8u 4u start 3u)) (fun (q : Prod State (List Out)) => fillSettle e102 (first q) n7hash 6u 8u 4u start 3u)
+def cancelOwner : Option (Prod State (List Out)) := bind (bind f6 (fun (r : Prod State (List Out)) => cancel eOwner (first r) 8u)) (fun (q : Prod State (List Out)) => fillAuth e0 (first q) inTok outTok digest owner 8u start n8v n8r n8w)
+def cancelOther : Option U256 := map (fun (q : Prod State (List Out)) => closedOf e0 (first q) owner 8u) (bind (bind f6 (fun (r : Prod State (List Out)) => cancel e0 (first r) 8u)) (fun (q : Prod State (List Out)) => fillAuth e0 (first q) inTok outTok digest owner 8u start n8v n8r n8w))
+
+-- Eval rows of the window and of times: the DAO caller sets 4u, another caller reverts; times 9u, 16u
+-- and 17u of 7u (17u gives 16 x); at window 17u fillSettle reverts (o 8u = startOut, accepted at once
+-- without the cap).
+def windowPush : Option U256 := map (fun (r : Prod State (List Out)) => windowOf e0 (first r)) (transfer eDao init dao 4u)
+def windowOther : Option (Prod State (List Out)) := transfer e0 init dao 4u
+def times9 : U256 := times 9u 7u
+def times16 : U256 := times 16u 7u
+def times17 : U256 := times 17u 7u
+def fillCap : Option (Prod State (List Out)) :=
+  bind (bind (transfer eDao init dao 17u) (fun (q : Prod State (List Out)) => fillOn (first q))) (fun (r : Prod State (List Out)) => fillSettle e102 (first r) n7hash 8u 8u 4u start 3u)
+
+-- Eval row of the call words (Q-S11-8 (a)): the settle of fillDone with so 9u in place of startOut 8u and o 7u
+-- reverts (Accept takes o 7u at t 2 with so 8u and with so 9u, so only the so check reverts).
+def fillWord8 : Option (Prod State (List Out)) := bind fEnacted (fun (r : Prod State (List Out)) => fillSettle e102 (first r) n7hash 7u 9u 4u start 3u)
+
+-- The price rule also covers increasing endpoints without accepting the start price after t = 0.
+def risingLow : Flag := acceptW 4u 2u 4u 8u 4u
+def risingExact : Flag := acceptW 4u 2u 4u 8u 6u
+def risingStart : Flag := acceptW 4u 0u 4u 8u 4u
+def risingEnd : Flag := acceptW 4u 4u 4u 8u 4u

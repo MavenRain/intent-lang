@@ -32,15 +32,6 @@ build/asmtool mock >"$tmp/mock" || { echo "FAIL diff: asmtool mock"; exit 1; }
 # lg FROM TO AMOUNT: the logs line of one Transfer LOG3 of the mock.
 lg() { echo "$topic,$(pad "$1"),$(pad "$2") $(pad "$3")"; }
 
-# acct ADDR: the storage rows `SLOT VALUE` of the account ADDR in tmp/dump.
-acct() {
-  awk -F'"' -v a="0x$1" 'NF == 3 && length($2) == 42 { p = (tolower($2) == a); next }
-    p && NF >= 5 && length($2) == 66 && substr($2, 1, 2) == "0x" { print substr($2, 3), $4 }' "$tmp/dump"
-}
-
-# norm: the rows `SLOT VALUE` of stdin with VALUE as hexnorm, sorted.
-norm() { awk '{ v = tolower($2); sub(/^0+/, "", v); print $1, (v == "" ? "0" : v) }' | sort; }
-
 # bal MODE ROWS: the storage rows of the mock: MODE at slot 0 (no row for 0
 # or none) and each ADDR:VALUE of ROWS at slot ADDR.
 bal() {

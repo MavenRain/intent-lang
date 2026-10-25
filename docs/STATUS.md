@@ -110,12 +110,26 @@
   `numbered=1`, PLAN O43). The kit examples/daokit.lang (PLAN O44) has
   the entries castSig, castSlot, castSeal and enact and the views
   tallyWord, windowNow, castCount and stageOf (16702 runtime bytes, 16737
-  initcode bytes). `ballottool dao` gives the words and `dao
+  initcode bytes; 16883 and 16918 after the pay of S10R). `ballottool dao` gives the words and `dao
   regressions`; test/dao.sh runs 33 chain steps and prints the size and
   gas rows; test/run/daokit.script runs on the guest and on the EVM
   chain. New: 1 example (daokit.lang), 11 eval rows, 1 run and 16 evm
   steps (blocks 1, daokit 15); the env-block lower refusal and its check
   leave. The fill is not in S10 (Q-S10-12 (d), PLAN row S10R).
+- S10R (the reactor contract; O15, O35, O41, O45, O46): the kit
+  examples/reactor.lang has the entries fillCipher, fillAuth, fillOpen,
+  fillSettle (6 call words, Q-S11-8 (a)), cancel and transfer and the
+  views windowOf, amountOf and closedOf (20571 runtime bytes, 20595
+  initcode bytes). The DAO pushes the window: enact pays the new window
+  to the reactor address, and the entry transfer sets the window when
+  the caller is the DAO address (Q-S11-2 (a)). `times` goes to k <= 16,
+  and fillSettle reverts at a window more than 16u (Q-S11-5 (c)).
+  test/reactor.sh runs 40 chain steps on the DAO, the reactor and two
+  `asmtool mock` tokens and prints the size and gas rows;
+  test/run/reactor.script runs on the guest and on the EVM chain (with
+  a stub token, PLAN O47). New: 1 example (reactor.lang), 19 eval rows
+  (reactor 18, daokit enactPay), 1 run and 26 evm steps; mutants f1 ..
+  f9 killed.
 
 ## Remaining M0 work
 

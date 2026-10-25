@@ -239,6 +239,29 @@ reverts. The reactor part (the fill) is not in S10 (Q-S10-12 (d), PLAN
 O46): it goes to row S10R with its own contract, because one contract
 with both parts has 37038 runtime bytes, over EIP-170 (O15).
 
+Part S10R (the reactor contract, PLAN row S10R): the kit file
+`examples/reactor.lang` is the reactor part of the contract of PLAN
+section 7, in its own contract (Q-S10-12 (d)). The state holds the
+window, the replay keys, the fill words and the addresses. A fill is
+four calls: fillCipher keeps the 12 amount words under their digest;
+fillAuth checks that the replay key of (owner, nonce) is not used and
+that the owner signed the intent hash h (`ecrecover`, O13), then keeps
+the record of h; fillOpen checks the opening of one amount word,
+requiring its integer value to be below the BN254 subgroup order;
+fillSettle takes h o so mo st amt (Q-S11-8 (a)), checks each word one
+time against the record of h, needs the 3 openings and block >= start,
+and accepts o by rule 4.1 at t = min (block - start) window. Then it
+marks the replay key, pulls amtIn of inTok from the owner to the
+caller and o of outTok from the caller to the owner, and emits
+Settled. A window more than 16u reverts, and `times` goes to k <= 16
+(Q-S11-5 (c)). cancel marks the replay key of (caller, nonce). The DAO
+sets the window: enact pays the new window to the reactor address (a
+tie pays the old window), and the reactor entry `transfer (to : Addr)
+(amount : U256)` sets the window to amount when the caller is the DAO
+address (Q-S11-2 (a)); another caller reverts. Thus the reactor answers
+the ERC-20 transfer selector. The randomness proofs of the intent and
+the quote stay host rows (O45).
+
 ## 3. Type formers
 
 > Write here: only the deviations from the formers. Do not copy the forms.

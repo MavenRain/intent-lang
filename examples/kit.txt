@@ -36,3 +36,4 @@ blocks.lang
 intentsig.lang
 ballot.lang
 daokit.lang
+reactor.lang
